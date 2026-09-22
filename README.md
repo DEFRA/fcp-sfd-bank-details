@@ -1,4 +1,4 @@
-# cdp-node-backend-no-db-template
+# fcp-sfd-bank-details
 
 Core delivery platform Node.js Backend Template.
 
@@ -35,7 +35,7 @@ easier to use the Node Version Manager [nvm](https://github.com/creationix/nvm)
 To use the correct version of Node.js for this application, via nvm:
 
 ```bash
-cd cdp-node-backend-no-db-template
+cd fcp-sfd-bank-details
 nvm use
 ```
 
@@ -138,13 +138,13 @@ No additional proxy configuration is required in the service.
 Build:
 
 ```bash
-docker build --no-cache --tag cdp-node-backend-no-db-template .
+docker build --no-cache --tag fcp-sfd-bank-details .
 ```
 
 Run:
 
 ```bash
-docker run -e PORT=3001 -p 3001:3001 cdp-node-backend-no-db-template
+docker run -e PORT=3001 -p 3001:3001 fcp-sfd-bank-details
 ```
 
 ### Docker Compose
