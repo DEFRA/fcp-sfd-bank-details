@@ -1,11 +1,11 @@
 import Hapi from '@hapi/hapi'
 import { secureContext } from '@defra/hapi-secure-context'
-import { config } from '#/config.js'
-import { router } from '#/plugins/router.js'
-import { requestLogger } from '#/plugins/request-logger.js'
-import { failAction } from '#/common/helpers/fail-action.js'
-import { pulse } from '#/plugins/pulse.js'
-import { requestTracing } from '#/plugins/request-tracing.js'
+import { config } from './config.js'
+import { router } from './plugins/router.js'
+import { requestLogger } from './plugins/request-logger.js'
+import { failAction } from './common/helpers/fail-action.js'
+import { pulse } from './plugins/pulse.js'
+import { requestTracing } from './plugins/request-tracing.js'
 import { metrics } from '@defra/cdp-metrics'
 
 export async function createServer() {
