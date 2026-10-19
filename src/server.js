@@ -6,6 +6,7 @@ import { requestLogger } from './plugins/request-logger.js'
 import { failAction } from './common/helpers/fail-action.js'
 import { pulse } from './plugins/pulse.js'
 import { requestTracing } from './plugins/request-tracing.js'
+import { jwtAuth } from './plugins/jwt-auth.js'
 import { metrics } from '@defra/cdp-metrics'
 
 export async function createServer() {
@@ -40,6 +41,7 @@ export async function createServer() {
   // requestTracing - trace header logging and propagation
   // secureContext  - loads CA certificates from environment config
   // pulse          - provides shutdown handlers
+  // jwtAuth        - verifies calling services via AWS WebIdentity JWTs (bypassed locally, see plugin)
   // router         - routes used in the app
   await server.register([
     requestLogger,
@@ -47,6 +49,7 @@ export async function createServer() {
     metrics,
     secureContext,
     pulse,
+    jwtAuth,
     router
   ])
 
