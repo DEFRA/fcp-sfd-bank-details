@@ -164,8 +164,12 @@ Mock AWS resources can be created when Floci starts up by editing the scripts in
 
 ### Dependabot
 
-We have added an example dependabot configuration file to the repository. You can enable it by renaming
-the [.github/example.dependabot.yml](.github/example.dependabot.yml) to `.github/dependabot.yml`
+Dependabot is configured in [.github/dependabot.yml](.github/dependabot.yml) for security updates only
+(npm, Docker, Docker Compose and GitHub Actions), checked weekly on Mondays. Version-update PRs are disabled
+via `open-pull-requests-limit: 0`; security updates are grouped into one PR per ecosystem.
+
+Dependabot security updates must also be enabled in the repository's GitHub settings
+(Settings > Advanced Security).
 
 ### SonarCloud
 
