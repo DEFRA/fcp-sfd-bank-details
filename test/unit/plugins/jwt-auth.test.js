@@ -193,7 +193,8 @@ describe('jwtAuth', () => {
 
     const buildRequest = (authorization) => ({
       headers: { authorization },
-      server: { app: { JWKS: mockJwks } }
+      server: { app: { JWKS: mockJwks } },
+      logger: { warn: vi.fn() }
     })
 
     test('should reject a request with no authorization header', async () => {
@@ -277,7 +278,6 @@ describe('jwtAuth', () => {
       )
       const { scheme } = await registerWithEnvironment('test')
       const request = buildRequest('Bearer mockToken')
-      request.logger = { warn: vi.fn() }
 
       await expect(scheme.authenticate(request, h)).rejects.toMatchObject({
         message: 'Invalid token',
@@ -287,21 +287,6 @@ describe('jwtAuth', () => {
         { code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' },
         'JWT verification failed'
       )
-    })
-
-    test('should reject with a generic 401 when verification fails (no logger)', async () => {
-      mockJwtVerify.mockRejectedValue(
-        new Error('signature verification failed')
-      )
-      const { scheme } = await registerWithEnvironment('test')
-
-      await expect(
-        scheme.authenticate(buildRequest('Bearer badToken'), h)
-      ).rejects.toMatchObject({
-        message: 'Invalid token',
-        output: { statusCode: 401 }
-      })
-      expect(h.authenticated).not.toHaveBeenCalled()
     })
   })
 

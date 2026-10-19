@@ -24,44 +24,38 @@ import { jwtVerify, createRemoteJWKSet, customFetch } from 'jose'
 import * as undici from 'undici'
 import { config } from '../config.js'
 
-const jwtScheme = () => ({
-  authenticate: async (request, h) => {
-    const audience = config.get('auth.jwt.audience')
-    const issuer = config.get('auth.jwt.issuer')
-    const awsAccount = config.get('auth.jwt.awsAccount')
-    const allowedCallerServiceName = config.get(
-      'auth.jwt.allowedCallerServiceName'
-    )
-    const subject = `arn:aws:iam::${awsAccount}:role/${allowedCallerServiceName}`
+const createJwtScheme =
+  ({ audience, issuer, subject }) =>
+  () => ({
+    authenticate: async (request, h) => {
+      const authHeader = request.headers.authorization
 
-    const authHeader = request.headers.authorization
+      if (!authHeader?.startsWith('Bearer ')) {
+        throw Boom.unauthorized(null, 'Bearer')
+      }
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw Boom.unauthorized(null, 'Bearer')
+      const token = authHeader.slice('Bearer '.length)
+
+      try {
+        const { payload } = await jwtVerify(token, request.server.app.JWKS, {
+          issuer,
+          audience,
+          subject,
+          algorithms: ['RS256']
+        })
+
+        return h.authenticated({
+          credentials: {
+            token: payload,
+            sub: payload.sub
+          }
+        })
+      } catch (err) {
+        request.logger.warn({ code: err.code }, 'JWT verification failed')
+        throw Boom.unauthorized('Invalid token', 'Bearer')
+      }
     }
-
-    const token = authHeader.slice('Bearer '.length)
-
-    try {
-      const { payload } = await jwtVerify(token, request.server.app.JWKS, {
-        issuer,
-        audience,
-        subject,
-        algorithms: ['RS256']
-      })
-
-      return h.authenticated({
-        credentials: {
-          token: payload,
-          sub: payload.sub
-        }
-      })
-    } catch (err) {
-      request.logger?.warn({ code: err?.code }, 'JWT verification failed')
-      throw Boom.unauthorized('Invalid token', 'Bearer')
-    }
-  }
-})
+  })
 
 // Locally there's no AWS identity provider to issue callers a WebIdentity JWT, so requests are trusted unverified.
 const localScheme = () => ({
@@ -90,7 +84,9 @@ export const jwtAuth = {
       const bypass = config.get('auth.jwt.bypass')
 
       if (bypass && config.get('cdpEnvironment') !== 'local') {
-        throw new Error('JWT auth bypass is only permitted when ENVIRONMENT is local')
+        throw new Error(
+          'JWT auth bypass is only permitted when ENVIRONMENT is local'
+        )
       }
 
       if (!bypass) {
@@ -109,7 +105,15 @@ export const jwtAuth = {
         })
       }
 
-      server.auth.scheme('jwt-proxy', bypass ? localScheme : jwtScheme)
+      const scheme = bypass
+        ? localScheme
+        : createJwtScheme({
+            audience: config.get('auth.jwt.audience'),
+            issuer: config.get('auth.jwt.issuer'),
+            subject: `arn:aws:iam::${config.get('auth.jwt.awsAccount')}:role/${config.get('auth.jwt.allowedCallerServiceName')}`
+          })
+
+      server.auth.scheme('jwt-proxy', scheme)
       server.auth.strategy('jwt', 'jwt-proxy')
       server.auth.default('jwt')
     }

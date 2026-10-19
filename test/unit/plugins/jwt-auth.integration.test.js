@@ -35,9 +35,14 @@ describe('jwt auth with real tokens', () => {
   let privateKey
   let otherPrivateKey
 
-  const sign = (
-    { sub = callerSubject, iss = issuer, aud = 'fcp-sfd-bank-details', exp = '5m', alg = 'RS256', key } = {}
-  ) =>
+  const sign = ({
+    sub = callerSubject,
+    iss = issuer,
+    aud = 'fcp-sfd-bank-details',
+    exp = '5m',
+    alg = 'RS256',
+    key
+  } = {}) =>
     new SignJWT({})
       .setProtectedHeader({ alg, kid: 'test-key' })
       .setSubject(sub)
@@ -58,10 +63,15 @@ describe('jwt auth with real tokens', () => {
     const pair = await generateKeyPair('RS256')
     privateKey = pair.privateKey
     otherPrivateKey = (await generateKeyPair('RS256')).privateKey
-    const jwk = { ...(await exportJWK(pair.publicKey)), kid: 'test-key', alg: 'RS256' }
+    const jwk = {
+      ...(await exportJWK(pair.publicKey)),
+      kid: 'test-key',
+      alg: 'RS256'
+    }
     mockJwks = createLocalJWKSet({ keys: [jwk] })
 
     server = Hapi.server()
+    server.decorate('request', 'logger', { warn: vi.fn() })
     await server.register([jwtAuth, router])
     await server.initialize()
   })
@@ -85,25 +95,37 @@ describe('jwt auth with real tokens', () => {
   })
 
   test('should return 401 for a token with the wrong issuer', async () => {
-    const response = await get('/bank-details/107183280', await sign({ iss: 'https://evil.example.com' }))
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ iss: 'https://evil.example.com' })
+    )
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token with the wrong audience', async () => {
-    const response = await get('/bank-details/107183280', await sign({ aud: 'another-service' }))
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ aud: 'another-service' })
+    )
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token with the wrong subject', async () => {
-    const response = await get('/bank-details/107183280', await sign({ sub: `arn:aws:iam::${awsAccount}:role/other-service` }))
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ sub: `arn:aws:iam::${awsAccount}:role/other-service` })
+    )
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token with an expired', async () => {
-    const response = await get('/bank-details/107183280', await sign({ exp: Math.floor(Date.now() / 1000) - 60 }))
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ exp: Math.floor(Date.now() / 1000) - 60 })
+    )
 
     expect(response.statusCode).toBe(401)
   })
