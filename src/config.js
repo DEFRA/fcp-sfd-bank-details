@@ -51,7 +51,8 @@ export const config = convict({
       audience: {
         doc: 'The audience name this service expects in incoming service-to-service JWTs',
         format: String,
-        default: 'fcp-sfd-bank-details'
+        default: 'fcp-sfd-bank-details',
+        env: 'CDP_JWT_AUDIENCE'
       },
       issuer: {
         doc: 'Issuer used to validate incoming service-to-service JWTs',
@@ -73,6 +74,12 @@ export const config = convict({
         nullable: true,
         default: null,
         env: 'AWS_ACCOUNT'
+      },
+      bypass: {
+        doc: 'Skip JWT verification. Only permitted when ENVIRONMENT is local',
+        format: Boolean,
+        default: false,
+        env: 'JWT_AUTH_BYPASS'
       },
       allowedCallerServiceName: {
         doc: 'The only CDP service name allowed to call the protected endpoints on this service',
