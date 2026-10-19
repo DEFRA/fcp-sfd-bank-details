@@ -5,6 +5,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     clearMocks: true,
+    env: {
+      JWT_AUTH_BYPASS: 'true'
+    },
     fileParallelism: false,
     include: ['test/**/*.test.js'],
     coverage: {
