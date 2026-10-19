@@ -56,7 +56,8 @@ const jwtScheme = () => ({
           sub: payload.sub
         }
       })
-    } catch {
+    } catch (err) {
+      request.logger?.warn({ code: err?.code }, 'JWT verification failed')
       throw Boom.unauthorized('Invalid token', 'Bearer')
     }
   }
@@ -70,15 +71,15 @@ const localScheme = () => ({
 /**
  * Registers the JWT auth strategy used to protect service-to-service endpoints.
  *
- * In non-local environments this plugin validates AWS WebIdentity JWTs issued to the
+ * Unless the bypass is enabled this plugin validates AWS WebIdentity JWTs issued to the
  * caller service. It checks the bearer token, verifies the signature against the remote
  * JWKS, and confirms the token issuer, audience, subject and algorithm match the expected
  * values for this service and the allowed upstream caller.
  *
- * In local development the CDP identity provider is not available, so this plugin swaps in
- * a permissive scheme that authenticates requests without JWT verification. That bypass is
- * intentionally limited to the local environment and must never be used in a shared or
- * deployed environment.
+ * When auth.jwt.bypass (JWT_AUTH_BYPASS) is enabled for local development, where the CDP identity
+ * provider is not available, this plugin swaps in a permissive scheme that authenticates requests
+ * without JWT verification. The bypass is off by default and registration fails if it is enabled
+ * when ENVIRONMENT is not local.
  *
  * Verifies calling services using AWS WebIdentity JWTs (see CDP "Service to Service Auth" docs).
  */
@@ -86,23 +87,29 @@ export const jwtAuth = {
   plugin: {
     name: 'jwt',
     register: async (server) => {
-      const isLocal = config.get('cdpEnvironment') === 'local'
+      const bypass = config.get('auth.jwt.bypass')
 
-      if (isLocal) {
-        server.auth.scheme('jwt-proxy', localScheme)
-        server.auth.strategy('jwt', 'jwt-proxy')
-        server.auth.default('jwt')
-
-        return
+      if (bypass && config.get('cdpEnvironment') !== 'local') {
+        throw new Error('JWT auth bypass is only permitted when ENVIRONMENT is local')
       }
 
-      const jwksUri = config.get('auth.jwt.jwksUri')
+      if (!bypass) {
+        const issuer = config.get('auth.jwt.issuer')
+        const jwksUri = config.get('auth.jwt.jwksUri')
+        const awsAccount = config.get('auth.jwt.awsAccount')
 
-      server.app.JWKS = createRemoteJWKSet(new URL(jwksUri), {
-        [customFetch]: (...args) => undici.fetch(args[0], { ...args[1] })
-      })
+        if (!issuer || !jwksUri || !awsAccount) {
+          throw new Error(
+            'JWT auth requires CDP_JWT_ISSUER, CDP_JWT_JWKS_URI and AWS_ACCOUNT unless the local bypass is enabled'
+          )
+        }
 
-      server.auth.scheme('jwt-proxy', jwtScheme)
+        server.app.JWKS = createRemoteJWKSet(new URL(jwksUri), {
+          [customFetch]: (...args) => undici.fetch(args[0], { ...args[1] })
+        })
+      }
+
+      server.auth.scheme('jwt-proxy', bypass ? localScheme : jwtScheme)
       server.auth.strategy('jwt', 'jwt-proxy')
       server.auth.default('jwt')
     }

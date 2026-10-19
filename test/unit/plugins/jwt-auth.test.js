@@ -35,19 +35,29 @@ const buildServer = () => ({
   }
 })
 
-const registerWithEnvironment = async (cdpEnvironment) => {
+const registerWithEnvironment = async (cdpEnvironment, overrides = {}) => {
+  const values = {
+    'auth.jwt.bypass': cdpEnvironment === 'local',
+    'auth.jwt.jwksUri': jwksUri,
+    'auth.jwt.issuer': 'mockIssuer',
+    'auth.jwt.awsAccount': '123456789012',
+    ...overrides
+  }
+
   mockConfigGet.mockImplementation((key) => {
     switch (key) {
       case 'cdpEnvironment':
         return cdpEnvironment
+      case 'auth.jwt.bypass':
+        return values['auth.jwt.bypass']
       case 'auth.jwt.jwksUri':
-        return jwksUri
+        return values['auth.jwt.jwksUri']
       case 'auth.jwt.audience':
         return 'mockAudience'
       case 'auth.jwt.issuer':
-        return 'mockIssuer'
+        return values['auth.jwt.issuer']
       case 'auth.jwt.awsAccount':
-        return '123456789012'
+        return values['auth.jwt.awsAccount']
       case 'auth.jwt.allowedCallerServiceName':
         return 'mock-caller'
       default:
@@ -139,6 +149,45 @@ describe('jwtAuth', () => {
     })
   })
 
+  describe('when required JWT config is missing', () => {
+    test('should fail to register when the issuer is not set', async () => {
+      await expect(
+        registerWithEnvironment('test', { 'auth.jwt.issuer': null })
+      ).rejects.toThrow('JWT auth requires')
+    })
+
+    test('should fail to register when the JWKS uri is not set', async () => {
+      await expect(
+        registerWithEnvironment('test', { 'auth.jwt.jwksUri': null })
+      ).rejects.toThrow('JWT auth requires')
+    })
+
+    test('should fail to register when the AWS account is not set', async () => {
+      await expect(
+        registerWithEnvironment('test', { 'auth.jwt.awsAccount': null })
+      ).rejects.toThrow('JWT auth requires')
+    })
+  })
+
+  describe('when the bypass is enabled outside the local environment', () => {
+    test('should fail to register', async () => {
+      await expect(
+        registerWithEnvironment('prod', { 'auth.jwt.bypass': true })
+      ).rejects.toThrow('only permitted when ENVIRONMENT is local')
+    })
+  })
+
+  describe('when running locally without the bypass', () => {
+    test('should verify tokens', async () => {
+      const { server } = await registerWithEnvironment('local', {
+        'auth.jwt.bypass': false
+      })
+
+      expect(mockCreateRemoteJWKSet).toHaveBeenCalled()
+      expect(server.app.JWKS).toBe(mockJwks)
+    })
+  })
+
   describe('jwt scheme', () => {
     const h = { authenticated: vi.fn((result) => result) }
 
@@ -221,6 +270,26 @@ describe('jwtAuth', () => {
     })
 
     test('should reject with a generic 401 when verification fails', async () => {
+      mockJwtVerify.mockRejectedValue(
+        Object.assign(new Error('signature verification failed'), {
+          code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED'
+        })
+      )
+      const { scheme } = await registerWithEnvironment('test')
+      const request = buildRequest('Bearer mockToken')
+      request.logger = { warn: vi.fn() }
+
+      await expect(scheme.authenticate(request, h)).rejects.toMatchObject({
+        message: 'Invalid token',
+        output: { statusCode: 401 }
+      })
+      expect(request.logger.warn).toHaveBeenCalledWith(
+        { code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' },
+        'JWT verification failed'
+      )
+    })
+
+    test('should reject with a generic 401 when verification fails (no logger)', async () => {
       mockJwtVerify.mockRejectedValue(
         new Error('signature verification failed')
       )
