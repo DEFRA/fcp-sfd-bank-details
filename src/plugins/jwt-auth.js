@@ -29,7 +29,9 @@ const jwtScheme = () => ({
     const audience = config.get('auth.jwt.audience')
     const issuer = config.get('auth.jwt.issuer')
     const awsAccount = config.get('auth.jwt.awsAccount')
-    const allowedCallerServiceName = config.get('auth.jwt.allowedCallerServiceName')
+    const allowedCallerServiceName = config.get(
+      'auth.jwt.allowedCallerServiceName'
+    )
     const subject = `arn:aws:iam::${awsAccount}:role/${allowedCallerServiceName}`
 
     const authHeader = request.headers.authorization

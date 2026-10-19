@@ -85,7 +85,10 @@ describe('jwtAuth', () => {
     test('should register the jwt-proxy scheme', async () => {
       const { server } = await registerWithEnvironment('test')
 
-      expect(server.auth.scheme).toHaveBeenCalledWith('jwt-proxy', expect.any(Function))
+      expect(server.auth.scheme).toHaveBeenCalledWith(
+        'jwt-proxy',
+        expect.any(Function)
+      )
     })
 
     test('should register the jwt strategy using the jwt-proxy scheme', async () => {
@@ -103,8 +106,9 @@ describe('jwtAuth', () => {
     test('should set the default strategy after registering it', async () => {
       const { server } = await registerWithEnvironment('test')
 
-      expect(server.auth.strategy.mock.invocationCallOrder[0])
-        .toBeLessThan(server.auth.default.mock.invocationCallOrder[0])
+      expect(server.auth.strategy.mock.invocationCallOrder[0]).toBeLessThan(
+        server.auth.default.mock.invocationCallOrder[0]
+      )
     })
 
     test('should create the remote JWKS from the configured uri', async () => {
@@ -146,7 +150,9 @@ describe('jwtAuth', () => {
     test('should reject a request with no authorization header', async () => {
       const { scheme } = await registerWithEnvironment('test')
 
-      await expect(scheme.authenticate(buildRequest(undefined), h)).rejects.toMatchObject({
+      await expect(
+        scheme.authenticate(buildRequest(undefined), h)
+      ).rejects.toMatchObject({
         isBoom: true,
         output: { statusCode: 401 }
       })
@@ -155,7 +161,9 @@ describe('jwtAuth', () => {
     test('should reject a request without a Bearer prefix', async () => {
       const { scheme } = await registerWithEnvironment('test')
 
-      await expect(scheme.authenticate(buildRequest('Basic abc'), h)).rejects.toMatchObject({
+      await expect(
+        scheme.authenticate(buildRequest('Basic abc'), h)
+      ).rejects.toMatchObject({
         output: { statusCode: 401 }
       })
     })
@@ -163,7 +171,9 @@ describe('jwtAuth', () => {
     test('should not verify the token when the header is missing', async () => {
       const { scheme } = await registerWithEnvironment('test')
 
-      await expect(scheme.authenticate(buildRequest(undefined), h)).rejects.toThrow()
+      await expect(
+        scheme.authenticate(buildRequest(undefined), h)
+      ).rejects.toThrow()
 
       expect(mockJwtVerify).not.toHaveBeenCalled()
     })
@@ -171,7 +181,9 @@ describe('jwtAuth', () => {
     test('should set the Bearer challenge when the header is missing', async () => {
       const { scheme } = await registerWithEnvironment('test')
 
-      await expect(scheme.authenticate(buildRequest(undefined), h)).rejects.toMatchObject({
+      await expect(
+        scheme.authenticate(buildRequest(undefined), h)
+      ).rejects.toMatchObject({
         output: { headers: { 'WWW-Authenticate': 'Bearer' } }
       })
     })
@@ -195,19 +207,28 @@ describe('jwtAuth', () => {
       mockJwtVerify.mockResolvedValue({ payload })
       const { scheme } = await registerWithEnvironment('test')
 
-      const result = await scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      const result = await scheme.authenticate(
+        buildRequest('Bearer mockToken'),
+        h
+      )
 
       expect(h.authenticated).toHaveBeenCalledWith({
         credentials: { token: payload, sub: 'mockSub' }
       })
-      expect(result).toEqual({ credentials: { token: payload, sub: 'mockSub' } })
+      expect(result).toEqual({
+        credentials: { token: payload, sub: 'mockSub' }
+      })
     })
 
     test('should reject with a generic 401 when verification fails', async () => {
-      mockJwtVerify.mockRejectedValue(new Error('signature verification failed'))
+      mockJwtVerify.mockRejectedValue(
+        new Error('signature verification failed')
+      )
       const { scheme } = await registerWithEnvironment('test')
 
-      await expect(scheme.authenticate(buildRequest('Bearer badToken'), h)).rejects.toMatchObject({
+      await expect(
+        scheme.authenticate(buildRequest('Bearer badToken'), h)
+      ).rejects.toMatchObject({
         message: 'Invalid token',
         output: { statusCode: 401 }
       })
@@ -219,7 +240,10 @@ describe('jwtAuth', () => {
     test('should register the jwt-proxy scheme', async () => {
       const { server } = await registerWithEnvironment('local')
 
-      expect(server.auth.scheme).toHaveBeenCalledWith('jwt-proxy', expect.any(Function))
+      expect(server.auth.scheme).toHaveBeenCalledWith(
+        'jwt-proxy',
+        expect.any(Function)
+      )
     })
 
     test('should register the jwt strategy using the jwt-proxy scheme', async () => {
