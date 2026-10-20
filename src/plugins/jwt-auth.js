@@ -28,13 +28,13 @@ const createJwtScheme =
   ({ audience, issuer, subject }) =>
   () => ({
     authenticate: async (request, h) => {
-      const authHeader = request.headers.authorization
+      const match = request.headers.authorization?.match(/^Bearer +(\S+)$/i)
 
-      if (!authHeader?.startsWith('Bearer ')) {
+      if (!match) {
         throw Boom.unauthorized(null, 'Bearer')
       }
 
-      const token = authHeader.slice('Bearer '.length)
+      const token = match[1]
 
       try {
         const { payload } = await jwtVerify(token, request.server.app.JWKS, {

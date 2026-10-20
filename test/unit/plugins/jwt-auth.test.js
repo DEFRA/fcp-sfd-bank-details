@@ -252,6 +252,50 @@ describe('jwtAuth', () => {
       })
     })
 
+    test.each([
+      ['a lowercase scheme', 'bearer mockToken'],
+      ['an uppercase scheme', 'BEARER mockToken'],
+      ['multiple spaces after the scheme', 'Bearer   mockToken']
+    ])('should accept %s', async (_, header) => {
+      mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
+      const { scheme } = await registerWithEnvironment('test')
+
+      await scheme.authenticate(buildRequest(header), h)
+
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        'mockToken',
+        mockJwks,
+        expect.any(Object)
+      )
+    })
+
+    test('should not change the case of the token', async () => {
+      mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
+      const { scheme } = await registerWithEnvironment('test')
+
+      await scheme.authenticate(buildRequest('bearer MockToken'), h)
+
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        'MockToken',
+        mockJwks,
+        expect.any(Object)
+      )
+    })
+
+    test.each([
+      ['no token', 'Bearer '],
+      ['no space between scheme and token', 'BearermockToken'],
+      ['extra parts after the token', 'Bearer mockToken extra']
+    ])('should reject a header with %s', async (_, header) => {
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest(header), h)
+      ).rejects.toMatchObject({ output: { statusCode: 401 } })
+
+      expect(mockJwtVerify).not.toHaveBeenCalled()
+    })
+
     test('should authenticate with the token payload as credentials', async () => {
       const payload = { sub: 'mockSub', iss: 'mockIssuer' }
       mockJwtVerify.mockResolvedValue({ payload })
