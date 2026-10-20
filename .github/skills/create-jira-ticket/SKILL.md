@@ -1,7 +1,7 @@
 ---
 name: create-jira-ticket
 description: Create a Jira ticket in the FLS2 project with optional epic linking. Use when asked to create a Jira ticket directly or when create-pr needs to create one.
-argument-hint: "[Task|Story|Bug] [summary] [optional-epic-keyword]"
+argument-hint: '[Task|Story|Bug] [summary] [optional-epic-keyword]'
 ---
 
 # Create Jira ticket

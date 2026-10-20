@@ -48,6 +48,7 @@ Use these labels for findings:
 Where the surface supports per-line comments (a pull request review), raise each finding as a comment on the relevant line, prefixed with its category and severity, e.g. `Tests and coverage [Blocking]`.
 
 Otherwise, structure findings by file. For each file with issues, provide:
+
 - **File:** `path/to/file.js` (line numbers)
 - **Category & Severity:** Category name + [Blocking|Recommended|Nit]
 - **Issue:** Clear description
@@ -57,8 +58,8 @@ Otherwise, structure findings by file. For each file with issues, provide:
 - End with a verdict: PASS or FAIL
 - If the verdict is FAIL, ask "Would you like me to fix these?" — if yes, fix all failures and do not change anything else
 
-
 **Do not post comments about:**
+
 - PR description or title
 - Branch name or commit history
 - Business logic (only review changes to the implementation, not the overall design)

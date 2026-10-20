@@ -42,24 +42,26 @@ Two of the existing building blocks (`ffc-ice-bank` and `ffc-ice-crm`) are publi
 
 The current service restricts when a customer can update their details. Business analysis has agreed the following position:
 
-| Rule | Position |
-|---|---|
+| Rule                                                 | Position                                                                                                                                                        |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Block updates shortly after a new account is created | **Under investigation.** Caused by a data-sync delay before new records reach D365, not by fraud concerns. A queue-and-retry approach may replace a hard block. |
-| Block updates shortly after a previous submission | **Drop.** No clear rationale, and the D365 hold already covers fraud. |
-| Block a second update on the same day | **Keep.** D365 can't represent two updates on one calendar day, so this is a genuine system constraint. |
-| Limit the number of failed validation attempts | **Drop as a hard block.** It causes real problems (for example joint accounts failing on name mismatches). Use in-journey guidance or a support route instead. |
+| Block updates shortly after a previous submission    | **Drop.** No clear rationale, and the D365 hold already covers fraud.                                                                                           |
+| Block a second update on the same day                | **Keep.** D365 can't represent two updates on one calendar day, so this is a genuine system constraint.                                                         |
+| Limit the number of failed validation attempts       | **Drop as a hard block.** It causes real problems (for example joint accounts failing on name mismatches). Use in-journey guidance or a support route instead.  |
 
 Only the same-day rule is a hard constraint to carry over. Don't reintroduce the dropped rules as hard blocks.
 
 ## 5. Delivery phases
 
 **Phase 1: view bank details**
+
 - A signed-in user can view the bank details held for their own business.
 - Read-only integration with D365 Finance, using a modern authenticated client.
 - A user must only ever see their own organisation's details.
 - Service-to-service auth, correlation IDs across both services, and structured logging.
 
 **Phase 2: update bank details**
+
 - A user with the right permission level can update their details.
 - Bank validation via LexisNexis, handling full, partial and no-match outcomes.
 - Business rules from §4.
@@ -85,12 +87,12 @@ Follow these when generating or reviewing code in this repo:
 
 ## 7. Glossary
 
-| Term | Meaning |
-|---|---|
-| SBI | Single Business Identifier, the identifier for a business |
-| FRN | Firm Reference Number, the customer's reference used in D365 and CRM |
-| CRN | Customer Reference Number, identifying an individual |
-| D365 | Dynamics 365 Finance, the system of record for bank account details |
-| CRM / Dataverse | The system caseworkers use to review submissions |
-| CDP | Core Delivery Platform, the hosting platform for this service |
-| DAL | Data Access Layer, the existing API that fronts RPA data sources |
+| Term            | Meaning                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| SBI             | Single Business Identifier, the identifier for a business            |
+| FRN             | Firm Reference Number, the customer's reference used in D365 and CRM |
+| CRN             | Customer Reference Number, identifying an individual                 |
+| D365            | Dynamics 365 Finance, the system of record for bank account details  |
+| CRM / Dataverse | The system caseworkers use to review submissions                     |
+| CDP             | Core Delivery Platform, the hosting platform for this service        |
+| DAL             | Data Access Layer, the existing API that fronts RPA data sources     |

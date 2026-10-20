@@ -1,7 +1,7 @@
 ---
 name: create-pr
 description: Analyse the current git branch, commits, and diff to generate a branch name, PR title, and PR description, then create the branch, commit, and open a draft PR. Use when asked to create a PR, open a pull request, or prepare a branch for review.
-argument-hint: "[FLS2-ticket] [jira-url]"
+argument-hint: '[FLS2-ticket] [jira-url]'
 ---
 
 # Generate GitHub PR metadata and create PR
@@ -27,6 +27,7 @@ Look for ticket patterns in branch name, commits, or $ARGUMENTS:
 - $ARGUMENTS may contain a ticket ID and/or URL, e.g. `"FLS2-1006 https://eaflood.atlassian.net/browse/FLS2-1006"`
 
 **If no ticket detected — stop and ask once:**
+
 > "Do you have a Jira ticket for this work? Adding one improves traceability and naming consistency."
 
 - If user says no ticket → use non-ticket branch/title rules below
@@ -59,21 +60,25 @@ Infer from diff and commits:
 ### Branch naming
 
 **With ticket:**
+
 - Format: `fls2-<ticket-number>-<short-kebab-description>`
 - Example: `fls2-1006-disable-redis-ready-check`
 - Lowercase, kebab-case, concise, reflects intent not implementation trivia
 
 **Without ticket:**
+
 - `<type>/<short-description>` e.g. `refactor/update-address-change-service`
 - or `fls2-<short-description>` e.g. `fls2-update-docker-compose-config`
 
 ### PR title
 
 **With ticket:**
+
 - Format: `FLS2-<ticket>: <Clear Action Statement>`
 - Example: `FLS2-1006: Disable Redis Ready Check`
 
 **Without ticket:**
+
 - Concise human-readable title, no ticket prefix
 - Example: `Fix 500 Error on Re-login After Interruptor Journey`
 
@@ -82,26 +87,29 @@ Infer from diff and commits:
 **Tone:** professional, concise, engineering-focused — explain **why** and **what**, not file-by-file narration.
 
 **When ticket exists** — put the Jira URL at the very top (before any section):
+
 ```
 https://eaflood.atlassian.net/browse/FLS2-<ticket>
 ```
 
 **Required sections (always):**
+
 - `## Summary` — include the **why** here: what problem this solves, what was happening before, and why the approach was chosen. Do not use a separate `## Problem` section; fold all context into Summary.
 - `## Changes` (bullet list)
 
 **Optional sections** — add only when they add value:
+
 - `## Behaviour` — user-visible or system behaviour changes
 - `## Testing` — what was run or how to verify
 - `## Notes` — rollout, follow-ups, risk
 
 **Size guidance:**
 
-| Size | Approach |
-|------|----------|
-| Very small | Short summary paragraph (with why) + tight bullet list; note if data-only / test-only / no functional change |
-| Medium | Summary paragraph + structured `## Changes` bullets |
-| Large / architectural | Summary + Changes + Behaviour + Testing where applicable |
+| Size                  | Approach                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Very small            | Short summary paragraph (with why) + tight bullet list; note if data-only / test-only / no functional change |
+| Medium                | Summary paragraph + structured `## Changes` bullets                                                          |
+| Large / architectural | Summary + Changes + Behaviour + Testing where applicable                                                     |
 
 ## Step 5: Confirm before writing to the remote
 
