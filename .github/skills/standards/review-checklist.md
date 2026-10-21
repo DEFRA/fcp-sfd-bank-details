@@ -56,7 +56,6 @@ Apply the Writing code and Refactoring sections in [SKILL.md](./SKILL.md).
 ## 7. Documentation
 
 - Exported functions have JSDoc comments.
-- `env-vars.md` is updated when `src/config.js` changes.
 - README is updated if setup steps or prerequisites change.
 - Breaking changes to the API contract are clearly documented.
 
