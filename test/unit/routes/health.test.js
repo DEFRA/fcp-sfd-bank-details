@@ -6,6 +6,10 @@ describe('Health endpoint', () => {
     expect(health.path).toBe('/health')
   })
 
+  test('should not require authentication', () => {
+    expect(health.options.auth).toBe(false)
+  })
+
   test('should return a success message', () => {
     const mockH = {
       response: vi.fn().mockReturnValue({ statusCode: 200 })

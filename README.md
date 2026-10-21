@@ -65,6 +65,8 @@ To run the application in `development` mode run:
 npm run dev
 ```
 
+The `dev` and `dev:debug` scripts set `JWT_AUTH_BYPASS=true`, which skips JWT verification because the CDP identity provider is not available locally. The bypass is disabled by default and the service refuses to start with it enabled unless `ENVIRONMENT` is `local`.
+
 ### Testing
 
 To test the application run:
@@ -80,6 +82,8 @@ To mimic the application running in `production` mode locally run:
 ```bash
 npm start
 ```
+
+Without the CDP JWT settings (`CDP_JWT_ISSUER`, `CDP_JWT_JWKS_URI`, `AWS_ACCOUNT`) this fails to start locally. Either provide them, or opt in explicitly with `JWT_AUTH_BYPASS=true npm start` (local only).
 
 ### Npm scripts
 

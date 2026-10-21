@@ -5,6 +5,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     clearMocks: true,
+    // createServer registers real auth; tests start it with the local bypass
+    env: {
+      JWT_AUTH_BYPASS: 'true'
+    },
     fileParallelism: false,
     include: ['test/**/*.test.js'],
     coverage: {

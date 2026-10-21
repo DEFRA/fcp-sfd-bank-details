@@ -6,6 +6,10 @@ describe('Bank details endpoint', () => {
     expect(bankDetails.path).toBe('/bank-details/{sbi}')
   })
 
+  test('should use the default auth strategy rather than disabling auth', () => {
+    expect(bankDetails.options?.auth).not.toBe(false)
+  })
+
   test('should return a fake bank details data set for the given SBI', () => {
     const mockRequest = { params: { sbi: '107183280' } }
     const mockH = {

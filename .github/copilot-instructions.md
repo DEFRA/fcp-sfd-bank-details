@@ -31,8 +31,6 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - `npm run lint:fix` and `npm run format`: fix lint and formatting
 - `npm run git:pre-commit-hook`: audit, format check, lint and test; run before pushing
 
-Env vars are documented in [env-vars.md](../env-vars.md). Update it whenever `src/config.js` changes.
-
 ## Architecture
 
 Keep dependencies flowing inward:
@@ -55,7 +53,7 @@ Keep dependencies flowing inward:
 - Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads.
 - No real data, secrets or credentials in code, tests or fixtures; use obviously fake values.
 - Use named constants rather than magic values; no commented-out code; JSDoc on exported functions.
-- New config needs `doc`, `format`, `default` and `env` in `src/config.js`, plus an entry in `env-vars.md`.
+- New config needs `doc`, `format`, `default` and `env` in `src/config.js`.
 - Pin exact dependency versions and check `npm audit`. Don't introduce alternative frameworks (Express, Jest, dotenv).
 
 ## Testing

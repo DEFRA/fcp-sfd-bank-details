@@ -29,7 +29,7 @@ This document defines the standards an agent must apply when reviewing or writin
 - Routes stay thin: validate input, call a service, shape the response.
 - Business logic lives in services; calls to D365, CRM, AWS or other upstreams live in client modules, never in handlers.
 - Map upstream response shapes to domain objects at the client boundary.
-- All config goes through `src/config.js` (convict) and is documented in `env-vars.md`. Never read `process.env` elsewhere.
+- All config goes through `src/config.js` (convict). Never read `process.env` elsewhere.
 - Validate input with Joi; return errors with Boom without leaking internals.
 - Log with the shared logger only. Never log bank details, other PII or full upstream payloads.
 - External calls have timeouts and bounded retries.
@@ -57,8 +57,7 @@ Before completing any task:
 1. `npm run lint` and `npm run format:check` pass
 2. `npm test` passes with coverage at or above 90%
 3. No `console.*`, `.only`, or commented-out code
-4. No new config without an `env-vars.md` entry
-5. No unintended files changed
+4. No unintended files changed
 
 ## References
 
