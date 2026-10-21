@@ -1,24 +1,15 @@
-import Hapi from '@hapi/hapi'
 import { SignJWT, generateKeyPair, createLocalJWKSet, exportJWK } from 'jose'
-import { beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 
 const issuer = 'https://issuer.example.com'
 const awsAccount = '123456789012'
 const callerSubject = `arn:aws:iam::${awsAccount}:role/fcp-sfd-frontend`
 
-const mockConfig = {
-  cdpEnvironment: 'test',
-  'auth.jwt.bypass': false,
-  'auth.jwt.audience': 'fcp-sfd-bank-details',
-  'auth.jwt.issuer': issuer,
-  'auth.jwt.jwksUri': 'https://issuer.example.com/jwks.json',
-  'auth.jwt.awsAccount': awsAccount,
-  'auth.jwt.allowedCallerServiceName': 'fcp-sfd-frontend'
-}
-
-vi.mock('../../../src/config.js', () => ({
-  config: { get: (key) => mockConfig[key] }
-}))
+vi.stubEnv('ENVIRONMENT', 'test')
+vi.stubEnv('JWT_AUTH_BYPASS', 'false')
+vi.stubEnv('CDP_JWT_ISSUER', issuer)
+vi.stubEnv('CDP_JWT_JWKS_URI', 'https://issuer.example.com/jwks.json')
+vi.stubEnv('AWS_ACCOUNT', awsAccount)
 
 let mockJwks
 vi.mock('jose', async (importOriginal) => {
@@ -27,8 +18,7 @@ vi.mock('jose', async (importOriginal) => {
   return { ...actual, createRemoteJWKSet: () => mockJwks }
 })
 
-const { jwtAuth } = await import('../../../src/plugins/jwt-auth.js')
-const { router } = await import('../../../src/plugins/router.js')
+const { createServer } = await import('../../../src/server.js')
 
 describe('jwt auth with real tokens', () => {
   let server
@@ -70,10 +60,12 @@ describe('jwt auth with real tokens', () => {
     }
     mockJwks = createLocalJWKSet({ keys: [jwk] })
 
-    server = Hapi.server()
-    server.decorate('request', 'logger', { warn: vi.fn() })
-    await server.register([jwtAuth, router])
+    server = await createServer()
     await server.initialize()
+  })
+
+  afterAll(async () => {
+    await server.stop()
   })
 
   test('should allow a valid token from the allowed caller', async () => {
