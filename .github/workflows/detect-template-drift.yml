@@ -1,0 +1,102 @@
+name: Detect CDP Template Drift
+
+on:
+
+  schedule:
+    - cron: "0 8 * * 1" # Every Monday at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  detect-drift:
+    name: Detect Template Drift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout service repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read drift config
+        id: config
+        run: |
+          echo "templateRepo=$(jq -r '.templateRepo' .github/drift-config.json)" >> "$GITHUB_OUTPUT"
+          echo "templateBranch=$(jq -r '.templateBranch' .github/drift-config.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout CDP template
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.config.outputs.templateRepo }}
+          ref: ${{ steps.config.outputs.templateBranch }}
+          path: cdp-template
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 24
+
+      - name: Run drift detection
+        id: drift
+        run: |
+          set +e
+          node .github/scripts/detect-drift.js ./package.json ./cdp-template/package.json
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "detected=false" >> "$GITHUB_OUTPUT"
+          elif [ $EXIT_CODE -eq 1 ]; then
+            echo "detected=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Script failed with unexpected exit code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
+
+      - name: Create or update GitHub issue
+        if: steps.drift.outputs.detected == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const fs = require('fs')
+            const report = fs.readFileSync('cdp-template-drift-report.md', 'utf8')
+            const label = 'cdp-template-drift'
+
+            // Check for an existing open drift issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open'
+            })
+
+            if (issues.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body: report
+              })
+              core.info(`Updated existing issue #${issues[0].number}`)
+            } else {
+              // Ensure the label exists
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: 'e99695',
+                  description: 'CDP template package.json drift detected'
+                })
+              } catch (e) {
+                // Label already exists — ignore
+              }
+
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'CDP Template Drift Detected in package.json',
+                body: report,
+                labels: [label]
+              })
+              core.info(`Created new issue #${issue.number}`)
+            }
