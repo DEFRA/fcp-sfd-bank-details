@@ -54,13 +54,9 @@ function compareDeps(templateDeps, serviceDeps, ignored) {
   const missing = []
 
   for (const [pkg, tVer] of Object.entries(templateDeps || {})) {
-    if (ignored.has(pkg)) {
-      continue
-    }
-
     const sVer = serviceDeps?.[pkg]
 
-    if (sVer === tVer) {
+    if (ignored.has(pkg) || sVer === tVer) {
       continue
     }
 
