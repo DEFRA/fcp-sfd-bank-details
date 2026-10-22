@@ -5,23 +5,16 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
-const [, , servicePkgPath, templatePkgPath] = process.argv
-
-if (!servicePkgPath || !templatePkgPath) {
-  console.error(
-    'Usage: node detect-drift.js <service-package.json> <template-package.json>'
-  )
-  process.exit(2)
-}
+const repoRoot = resolve(scriptDir, '..', '..')
 
 const config = JSON.parse(
   readFileSync(resolve(scriptDir, '..', 'drift-config.json'), 'utf8')
 )
 const servicePkg = JSON.parse(
-  readFileSync(resolve(servicePkgPath), 'utf8')
+  readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
 )
 const templatePkg = JSON.parse(
-  readFileSync(resolve(templatePkgPath), 'utf8')
+  readFileSync(resolve(repoRoot, 'cdp-template', 'package.json'), 'utf8')
 )
 
 const ignoredFields = new Set([
@@ -37,7 +30,9 @@ const ignoredDevDeps = new Set(config.ignoredDevDependencies || [])
 const topLevelDiffs = []
 
 for (const key of Object.keys(templatePkg)) {
-  if (ignoredFields.has(key)) continue
+  if (ignoredFields.has(key)) {
+    continue
+  }
 
   const tVal = JSON.stringify(templatePkg[key])
   const sVal = JSON.stringify(servicePkg[key])
@@ -54,44 +49,59 @@ for (const key of Object.keys(templatePkg)) {
 // Compare dependency-like objects (dependencies, devDependencies, overrides)
 // Only flags packages that exist in the template — service-only packages are
 // intentional additions and are NOT considered drift.
-function compareDeps (templateDeps, serviceDeps, ignored) {
+function compareDeps(templateDeps, serviceDeps, ignored) {
   const mismatched = []
   const missing = []
 
   for (const [pkg, tVer] of Object.entries(templateDeps || {})) {
-    if (ignored.has(pkg)) continue
+    if (ignored.has(pkg)) {
+      continue
+    }
 
-    const sVer = (serviceDeps || {})[pkg]
+    const sVer = serviceDeps?.[pkg]
+
+    if (sVer === tVer) {
+      continue
+    }
 
     if (sVer === undefined) {
       missing.push({ name: pkg, templateVersion: tVer })
-    } else if (sVer !== tVer) {
-      mismatched.push({ name: pkg, serviceVersion: sVer, templateVersion: tVer })
+    } else {
+      mismatched.push({
+        name: pkg,
+        serviceVersion: sVer,
+        templateVersion: tVer
+      })
     }
   }
 
   return { mismatched, missing }
 }
 
+function hasEntries(drift) {
+  return drift.mismatched.length > 0 || drift.missing.length > 0
+}
+
 const depsDrift = compareDeps(
-  templatePkg.dependencies, servicePkg.dependencies, ignoredDeps
+  templatePkg.dependencies,
+  servicePkg.dependencies,
+  ignoredDeps
 )
 const devDepsDrift = compareDeps(
-  templatePkg.devDependencies, servicePkg.devDependencies, ignoredDevDeps
+  templatePkg.devDependencies,
+  servicePkg.devDependencies,
+  ignoredDevDeps
 )
 const overridesDrift = compareDeps(
-  templatePkg.overrides, servicePkg.overrides, new Set()
+  templatePkg.overrides,
+  servicePkg.overrides,
+  new Set()
 )
 
 // Determine whether any drift exists
 const hasDrift =
   topLevelDiffs.length > 0 ||
-  depsDrift.mismatched.length > 0 ||
-  depsDrift.missing.length > 0 ||
-  devDepsDrift.mismatched.length > 0 ||
-  devDepsDrift.missing.length > 0 ||
-  overridesDrift.mismatched.length > 0 ||
-  overridesDrift.missing.length > 0
+  [depsDrift, devDepsDrift, overridesDrift].some(hasEntries)
 
 if (!hasDrift) {
   console.log('No drift detected between service and template package.json.')
@@ -99,12 +109,14 @@ if (!hasDrift) {
 }
 
 // Build Markdown report
-function formatVal (val) {
-  if (val === '_(not set)_') return val
-  if (typeof val === 'object' && val !== null) {
-    return '`' + JSON.stringify(val) + '`'
+function formatVal(val) {
+  if (val === '_(not set)_') {
+    return val
   }
-  return '`' + String(val) + '`'
+  if (typeof val === 'object' && val !== null) {
+    return `\`${JSON.stringify(val)}\``
+  }
+  return `\`${val}\``
 }
 
 const lines = [
@@ -116,9 +128,11 @@ const lines = [
 
 // Top-level differences
 if (topLevelDiffs.length > 0) {
-  lines.push('## Top-Level Field Differences\n')
-  lines.push('| Field | Service | Template |')
-  lines.push('|-------|---------|----------|')
+  lines.push(
+    '## Top-Level Field Differences\n',
+    '| Field | Service | Template |',
+    '|-------|---------|----------|'
+  )
   for (const d of topLevelDiffs) {
     lines.push(
       `| \`${d.field}\` | ${formatVal(d.service)} | ${formatVal(d.template)} |`
@@ -128,15 +142,19 @@ if (topLevelDiffs.length > 0) {
 }
 
 // Dependency section helper
-function addDepsSection (title, drift) {
-  if (drift.mismatched.length === 0 && drift.missing.length === 0) return
+function addDepsSection(title, drift) {
+  if (!hasEntries(drift)) {
+    return
+  }
 
   lines.push(`## ${title}\n`)
 
   if (drift.mismatched.length > 0) {
-    lines.push('### Version Mismatches\n')
-    lines.push('| Package | Service | Template |')
-    lines.push('|---------|---------|----------|')
+    lines.push(
+      '### Version Mismatches\n',
+      '| Package | Service | Template |',
+      '|---------|---------|----------|'
+    )
     for (const d of drift.mismatched) {
       lines.push(
         `| \`${d.name}\` | \`${d.serviceVersion}\` | \`${d.templateVersion}\` |`
@@ -146,9 +164,11 @@ function addDepsSection (title, drift) {
   }
 
   if (drift.missing.length > 0) {
-    lines.push('### Missing from Service\n')
-    lines.push('| Package | Template Version |')
-    lines.push('|---------|------------------|')
+    lines.push(
+      '### Missing from Service\n',
+      '| Package | Template Version |',
+      '|---------|------------------|'
+    )
     for (const d of drift.missing) {
       lines.push(`| \`${d.name}\` | \`${d.templateVersion}\` |`)
     }

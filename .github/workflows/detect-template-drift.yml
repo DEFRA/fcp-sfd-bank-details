@@ -40,7 +40,7 @@ jobs:
         id: drift
         run: |
           set +e
-          node .github/scripts/detect-drift.js ./package.json ./cdp-template/package.json
+          node .github/scripts/detect-drift.js
           EXIT_CODE=$?
           set -e
           if [ $EXIT_CODE -eq 0 ]; then
