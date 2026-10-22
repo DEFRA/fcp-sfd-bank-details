@@ -20,13 +20,13 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - Logging via `hapi-pino` (ECS format); metrics, tracing and secure context via `@defra/*` CDP plugins.
 - Tests: Vitest. Lint: neostandard (ESLint). Format: Prettier.
 - Outbound HTTP uses the CDP forward proxy via environment variables; do not add manual proxy agents.
-- Local AWS emulation: floci (via compose), alongside Redis.
+- Local AWS emulation: floci (via compose).
 
 ## Commands
 
 - `npm install`: install dependencies
 - `npm run dev`: run with watch on port 3001 (reads `.env`)
-- `docker compose up --build`: run with local AWS emulation and Redis
+- `docker compose up --build`: run with local AWS emulation
 - `npm test` / `npm run test:watch`: Vitest with coverage / watch
 - `npm run lint:fix` and `npm run format`: fix lint and formatting
 - `npm run git:pre-commit-hook`: audit, format check, lint and test; run before pushing
