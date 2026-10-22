@@ -1,0 +1,16 @@
+{
+  "templateRepo": "DEFRA/cdp-node-backend-template",
+  "templateBranch": "main",
+  "ignoredTopLevelFields": [
+    "name",
+    "version",
+    "description",
+    "contributors",
+    "author",
+    "imports",
+    "sideEffects",
+    "scripts"
+  ],
+  "ignoredDependencies": [],
+  "ignoredDevDependencies": []
+}
