@@ -164,7 +164,7 @@ docker compose up --build -d
 
 Compose sets `ENVIRONMENT=local` and `JWT_AUTH_BYPASS=true`, so protected endpoints
 can be called without a JWT locally. It runs Node in watch mode using the container's
-environment variables; no `.env` file is needed or loaded inside the container.
+environment variables; no `.env` file is loaded in the container. Add `.env` file usage when the service requires it.
 
 Check the endpoints:
 
