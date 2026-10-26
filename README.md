@@ -155,16 +155,31 @@ docker run -e PORT=3001 -p 3001:3001 fcp-sfd-bank-details
 
 A local environment with:
 
-- Floci for AWS services (S3, SQS, SNS etc)
-- Redis
-- This service.
-- A commented out frontend example.
+- This service, available at `http://localhost:3001`.
+- Floci for future local AWS integrations, available at `http://localhost:4566`.
 
 ```bash
 docker compose up --build -d
 ```
 
-Mock AWS resources can be created when Floci starts up by editing the scripts in `./compose/floci/start.d/`.
+Compose sets `ENVIRONMENT=local` and `JWT_AUTH_BYPASS=true`, so protected endpoints
+can be called without a JWT locally. It runs Node in watch mode using the container's
+environment variables; no `.env` file is loaded in the container. Add `.env` file usage when the service requires it.
+
+Check the endpoints:
+
+```bash
+curl -i http://localhost:3001/health
+curl -i http://localhost:3001/example
+curl -i http://localhost:3001/bank-details/123456789
+```
+
+The health endpoint returns `200` with `{"message":"success"}`. The example and
+bank-details endpoints currently return stub data, not data from an upstream system.
+
+The service does not currently use AWS resources. No buckets, queues,
+topics or subscriptions are created, and application startup does not depend on
+Floci. Add resource initialisation when an implemented integration requires it.
 
 ### Dependabot
 
