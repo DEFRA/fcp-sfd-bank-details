@@ -8,6 +8,7 @@
     "node": ">=24.22.1"
   },
   "scripts": {
+    "check:synthetic-ids": "sfd-id-check --staged",
     "dev": "AWS_EMF_ENVIRONMENT=Local NODE_ENV=development JWT_AUTH_BYPASS=true npm run server:watch",
     "dev:debug": "AWS_EMF_ENVIRONMENT=Local NODE_ENV=development JWT_AUTH_BYPASS=true npm run server:debug",
     "docker:dev": "npm run dev",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "4.1.11",
     "eslint": "9.39.5",
+    "fcp-sfd-core": "github:DEFRA/fcp-sfd-core#95f58ade56b2d0dd0f15bdcba6a5f37a54bcc939",
     "husky": "9.1.7",
     "neostandard": "0.13.0",
     "npm-run-all": "4.1.5",
