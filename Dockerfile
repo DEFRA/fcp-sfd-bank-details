@@ -1,5 +1,5 @@
 ARG PARENT_VERSION=3.2.4-node24.22.1
-ARG PORT=3000
+ARG PORT=3004
 ARG PORT_DEBUG=9229
 
 FROM defradigital/node-development:${PARENT_VERSION} AS development
@@ -12,7 +12,7 @@ ENV PORT=${PORT}
 EXPOSE ${PORT} ${PORT_DEBUG}
 
 COPY --chown=node:node package*.json ./
-RUN npm install --allow-git=all
+RUN npm install --ignore-scripts --allow-git=all
 COPY --chown=node:node ./src ./src
 
 CMD [ "npm", "run", "docker:dev" ]
@@ -30,7 +30,7 @@ USER node
 COPY --from=development /home/node/package*.json ./
 COPY --from=development /home/node/src ./src/
 
-RUN npm ci --omit=dev
+RUN npm ci --ignore-scripts --omit=dev
 
 ARG PORT
 ENV PORT=${PORT}
