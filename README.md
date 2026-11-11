@@ -148,14 +148,14 @@ docker build --no-cache --tag fcp-sfd-bank-details .
 Run:
 
 ```bash
-docker run -e PORT=3001 -p 3001:3001 fcp-sfd-bank-details
+docker run -e PORT=3004 -p 3004:3004 fcp-sfd-bank-details
 ```
 
 ### Docker Compose
 
 A local environment with:
 
-- This service, available at `http://localhost:3001`.
+- This service, available at `http://localhost:3004`.
 - Floci for future local AWS integrations, available at `http://localhost:4566`.
 
 ```bash
@@ -169,9 +169,9 @@ environment variables; no `.env` file is loaded in the container. Add `.env` fil
 Check the endpoints:
 
 ```bash
-curl -i http://localhost:3001/health
-curl -i http://localhost:3001/example
-curl -i http://localhost:3001/bank-details/123456789
+curl -i http://localhost:3004/health
+curl -i http://localhost:3004/example
+curl -i http://localhost:3004/bank-details/123456789
 ```
 
 The health endpoint returns `200` with `{"message":"success"}`. The example and
