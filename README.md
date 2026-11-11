@@ -171,7 +171,7 @@ Check the endpoints:
 ```bash
 curl -i http://localhost:3004/health
 curl -i http://localhost:3004/example
-curl -i http://localhost:3004/bank-details/123456789
+curl -i http://localhost:3004/bank-details/800000001
 ```
 
 The health endpoint returns `200` with `{"message":"success"}`. The example and
