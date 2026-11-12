@@ -4,5 +4,7 @@ export const health = {
   options: {
     auth: false
   },
-  handler: (_request, h) => h.response({ message: 'success' })
+  handler: (_request, h) => {
+    return h.response({ message: 'success' })
+  }
 }

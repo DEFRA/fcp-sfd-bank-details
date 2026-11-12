@@ -4,6 +4,6 @@ import { loggerOptions } from '../../../plugins/logger-options.js'
 
 const logger = pino(loggerOptions)
 
-export function createLogger() {
+export const createLogger = () => {
   return logger
 }
