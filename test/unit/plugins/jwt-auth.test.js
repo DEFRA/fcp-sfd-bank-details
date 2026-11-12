@@ -252,15 +252,37 @@ describe('jwtAuth', () => {
       })
     })
 
-    test.each([
-      ['a lowercase scheme', 'bearer mockToken'],
-      ['an uppercase scheme', 'BEARER mockToken'],
-      ['multiple spaces after the scheme', 'Bearer   mockToken']
-    ])('should accept %s', async (_, header) => {
+    test('should accept a lowercase scheme', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
       const { scheme } = await registerWithEnvironment('test')
 
-      await scheme.authenticate(buildRequest(header), h)
+      await scheme.authenticate(buildRequest('bearer mockToken'), h)
+
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        'mockToken',
+        mockJwks,
+        expect.any(Object)
+      )
+    })
+
+    test('should accept an uppercase scheme', async () => {
+      mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
+      const { scheme } = await registerWithEnvironment('test')
+
+      await scheme.authenticate(buildRequest('BEARER mockToken'), h)
+
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        'mockToken',
+        mockJwks,
+        expect.any(Object)
+      )
+    })
+
+    test('should accept multiple spaces after the scheme', async () => {
+      mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
+      const { scheme } = await registerWithEnvironment('test')
+
+      await scheme.authenticate(buildRequest('Bearer   mockToken'), h)
 
       expect(mockJwtVerify).toHaveBeenCalledWith(
         'mockToken',
@@ -282,15 +304,31 @@ describe('jwtAuth', () => {
       )
     })
 
-    test.each([
-      ['no token', 'Bearer '],
-      ['no space between scheme and token', 'BearermockToken'],
-      ['extra parts after the token', 'Bearer mockToken extra']
-    ])('should reject a header with %s', async (_, header) => {
+    test('should reject a header with no token', async () => {
       const { scheme } = await registerWithEnvironment('test')
 
       await expect(
-        scheme.authenticate(buildRequest(header), h)
+        scheme.authenticate(buildRequest('Bearer '), h)
+      ).rejects.toMatchObject({ output: { statusCode: 401 } })
+
+      expect(mockJwtVerify).not.toHaveBeenCalled()
+    })
+
+    test('should reject a header with no space between scheme and token', async () => {
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('BearermockToken'), h)
+      ).rejects.toMatchObject({ output: { statusCode: 401 } })
+
+      expect(mockJwtVerify).not.toHaveBeenCalled()
+    })
+
+    test('should reject a header with extra parts after the token', async () => {
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken extra'), h)
       ).rejects.toMatchObject({ output: { statusCode: 401 } })
 
       expect(mockJwtVerify).not.toHaveBeenCalled()
