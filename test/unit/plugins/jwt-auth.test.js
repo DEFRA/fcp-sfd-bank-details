@@ -186,6 +186,8 @@ describe('jwtAuth', () => {
 
     const buildRequest = (authorization) => ({
       headers: { authorization },
+      method: 'get',
+      path: '/bank-details/800000001',
       server: { app: { JWKS: mockJwks } },
       logger: { warn: vi.fn(), error: vi.fn() }
     })
@@ -343,7 +345,19 @@ describe('jwtAuth', () => {
         output: { statusCode: 401 }
       })
       expect(request.logger.warn).toHaveBeenCalledWith(
-        { code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' },
+        {
+          event: {
+            type: 'jwt_verification',
+            action: 'get',
+            category: '/bank-details/800000001',
+            outcome: 'failure'
+          },
+          error: {
+            code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+            message: 'signature verification failed',
+            type: 'JWSSignatureVerificationFailed'
+          }
+        },
         'JWT verification failed'
       )
     })
@@ -372,7 +386,13 @@ describe('jwtAuth', () => {
         output: { statusCode: 503 }
       })
       expect(request.logger.error).toHaveBeenCalledWith(
-        expect.any(Object),
+        {
+          event: expect.objectContaining({
+            type: 'jwt_verification',
+            outcome: 'failure'
+          }),
+          error: expect.objectContaining({ stack_trace: expect.any(String) })
+        },
         'Could not verify JWT, the JSON Web Key Set was unavailable'
       )
       expect(request.logger.warn).not.toHaveBeenCalled()

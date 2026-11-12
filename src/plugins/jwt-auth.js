@@ -30,6 +30,10 @@
 import Boom from '@hapi/boom'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 import { JOSEError, JWKSInvalid, JWKSTimeout } from 'jose/errors'
+import {
+  buildJwksUnavailableLog,
+  buildTokenRejectedLog
+} from '../common/helpers/logging/build-jwt-auth-log.js'
 import { config } from '../config.js'
 
 // Claim AWS STS adds to a WebIdentity token, carrying the caller's principal id and tags.
@@ -84,13 +88,16 @@ const createJwtScheme =
       } catch (err) {
         if (isUpstreamFailure(err)) {
           request.logger.error(
-            { code: err.code },
+            buildJwksUnavailableLog(request, err),
             'Could not verify JWT, the JSON Web Key Set was unavailable'
           )
           throw Boom.serverUnavailable('Unable to verify token')
         }
 
-        request.logger.warn({ code: err.code }, 'JWT verification failed')
+        request.logger.warn(
+          buildTokenRejectedLog(request, err),
+          'JWT verification failed'
+        )
         throw Boom.unauthorized('Invalid token', 'Bearer')
       }
     }
