@@ -14,7 +14,6 @@
     "docker:dev": "npm run dev",
     "format": "prettier --write \"**/*.{cjs,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{cjs,js,json,md}\"",
-    "git:pre-commit-hook": "npm run security-audit && npm run format:check && npm run lint && npm test",
     "lint": "eslint --cache --cache-strategy content \"**/*.{cjs,js}\"",
     "lint:fix": "npm run lint -- --fix",
     "security-audit": "npm audit --audit-level=critical",
