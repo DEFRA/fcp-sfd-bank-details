@@ -9,12 +9,23 @@
 
 const JWT_VERIFICATION_EVENT = 'jwt_verification'
 
-const buildEvent = (request) => ({
-  type: JWT_VERIFICATION_EVENT,
-  action: request.method,
-  category: request.path,
-  outcome: 'failure'
-})
+const buildEvent = (request) => {
+  const { method, path } = request
+
+  return {
+    type: JWT_VERIFICATION_EVENT,
+    action: method,
+    category: path,
+    outcome: 'failure'
+  }
+}
+
+const buildError = (err) => {
+  const { code, message } = err
+  const { name } = err.constructor
+
+  return { code, message, type: name }
+}
 
 /**
  * Builds the log context for a token this service rejected.
@@ -29,11 +40,7 @@ const buildEvent = (request) => ({
  */
 export const buildTokenRejectedLog = (request, err) => ({
   event: buildEvent(request),
-  error: {
-    code: err.code,
-    message: err.message,
-    type: err.constructor.name
-  }
+  error: buildError(err)
 })
 
 /**
@@ -50,9 +57,7 @@ export const buildTokenRejectedLog = (request, err) => ({
 export const buildJwksUnavailableLog = (request, err) => ({
   event: buildEvent(request),
   error: {
-    code: err.code,
-    message: err.message,
-    stack_trace: err.stack,
-    type: err.constructor.name
+    ...buildError(err),
+    stack_trace: err.stack
   }
 })
