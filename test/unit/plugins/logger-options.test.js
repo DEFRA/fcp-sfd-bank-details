@@ -1,8 +1,11 @@
+// Test framework dependencies
 import { describe, expect, test, vi } from 'vitest'
 
+// Things we need to mock
 const mockGetTraceId = vi.fn()
 vi.mock('@defra/hapi-tracing', () => ({ getTraceId: mockGetTraceId }))
 
+// Thing under test
 const { loggerOptions } = await import('../../../src/plugins/logger-options.js')
 
 describe('loggerOptions', () => {

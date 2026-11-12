@@ -1,3 +1,4 @@
+// Test framework dependencies
 import { vi, beforeEach, describe, test, expect } from 'vitest'
 import {
   JOSEError,
@@ -7,6 +8,7 @@ import {
   JWSSignatureVerificationFailed
 } from 'jose/errors'
 
+// Things we need to mock
 const mockConfigGet = vi.fn()
 vi.mock('../../../src/config.js', () => ({
   config: {
@@ -21,19 +23,23 @@ vi.mock('jose', () => ({
   createRemoteJWKSet: mockCreateRemoteJWKSet
 }))
 
+// Thing under test
 const { jwtAuth } = await import('../../../src/plugins/jwt-auth.js')
 
+// Test helpers
 const jwksUri = 'https://example.com/.well-known/jwks.json'
 const mockJwks = Symbol('jwks')
 
-const buildServer = () => ({
-  app: {},
-  auth: {
-    scheme: vi.fn(),
-    strategy: vi.fn(),
-    default: vi.fn()
+const buildServer = () => {
+  return {
+    app: {},
+    auth: {
+      scheme: vi.fn(),
+      strategy: vi.fn(),
+      default: vi.fn()
+    }
   }
-})
+}
 
 const registerWithEnvironment = async (cdpEnvironment, overrides = {}) => {
   const values = {
@@ -184,13 +190,15 @@ describe('jwtAuth', () => {
   describe('jwt scheme', () => {
     const h = { authenticated: vi.fn((result) => result) }
 
-    const buildRequest = (authorization) => ({
-      headers: { authorization },
-      method: 'get',
-      path: '/bank-details/800000001',
-      server: { app: { JWKS: mockJwks } },
-      logger: { warn: vi.fn(), error: vi.fn() }
-    })
+    const buildRequest = (authorization) => {
+      return {
+        headers: { authorization },
+        method: 'get',
+        path: '/bank-details/800000001',
+        server: { app: { JWKS: mockJwks } },
+        logger: { warn: vi.fn(), error: vi.fn() }
+      }
+    }
 
     test('should reject a request with no authorization header', async () => {
       const { scheme } = await registerWithEnvironment('test')

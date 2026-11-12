@@ -47,63 +47,82 @@ const UPSTREAM_ERROR_CODES = new Set([
   JWKSTimeout.code
 ])
 
-const isUpstreamFailure = (err) =>
-  !(err instanceof JOSEError) || UPSTREAM_ERROR_CODES.has(err.code)
+const isUpstreamFailure = (err) => {
+  if (!(err instanceof JOSEError)) {
+    return true
+  }
 
-const createJwtScheme =
-  ({ audience, issuer, subject }) =>
-  () => ({
-    authenticate: async (request, h) => {
-      const match = request.headers.authorization?.match(/^Bearer +(\S+)$/i)
+  return UPSTREAM_ERROR_CODES.has(err.code)
+}
 
-      if (!match) {
-        throw Boom.unauthorized(null, 'Bearer')
-      }
+const authenticateToken = async (request, h, options) => {
+  const { audience, issuer, subject } = options
 
-      const token = match[1]
-      const { JWKS } = request.server.app
+  const match = request.headers.authorization?.match(/^Bearer +(\S+)$/i)
 
-      try {
-        const { payload, protectedHeader } = await jwtVerify(token, JWKS, {
-          issuer,
-          audience,
-          subject,
-          algorithms: ['RS256']
-        })
+  if (!match) {
+    throw Boom.unauthorized(null, 'Bearer')
+  }
 
-        return h.authenticated({
-          credentials: {
-            token: payload,
-            sub: payload.sub,
-            // Friendlier caller name than the role ARN, for logs and future per-caller rules.
-            // Deliberately not called "scope": Hapi reserves credentials.scope for its own
-            // route level scope checks and expects an array of strings there.
-            serviceName: payload[STS_CLAIM]?.principal_tags?.ServiceName
-          },
-          artifacts: { protectedHeader, payload }
-        })
-      } catch (err) {
-        if (isUpstreamFailure(err)) {
-          request.logger.error(
-            buildJwksUnavailableLog(request, err),
-            'Could not verify JWT, the JSON Web Key Set was unavailable'
-          )
-          throw Boom.serverUnavailable('Unable to verify token')
-        }
+  const token = match[1]
+  const { JWKS } = request.server.app
 
-        request.logger.warn(
-          buildTokenRejectedLog(request, err),
-          'JWT verification failed'
-        )
-        throw Boom.unauthorized('Invalid token', 'Bearer')
+  try {
+    const { payload, protectedHeader } = await jwtVerify(token, JWKS, {
+      issuer,
+      audience,
+      subject,
+      algorithms: ['RS256']
+    })
+
+    return h.authenticated({
+      credentials: {
+        token: payload,
+        sub: payload.sub,
+        // Friendlier caller name than the role ARN, for logs and future per-caller rules.
+        // Deliberately not called "scope": Hapi reserves credentials.scope for its own
+        // route level scope checks and expects an array of strings there.
+        serviceName: payload[STS_CLAIM]?.principal_tags?.ServiceName
+      },
+      artifacts: { protectedHeader, payload }
+    })
+  } catch (err) {
+    if (isUpstreamFailure(err)) {
+      request.logger.error(
+        buildJwksUnavailableLog(request, err),
+        'Could not verify JWT, the JSON Web Key Set was unavailable'
+      )
+
+      throw Boom.serverUnavailable('Unable to verify token')
+    }
+
+    request.logger.warn(
+      buildTokenRejectedLog(request, err),
+      'JWT verification failed'
+    )
+
+    throw Boom.unauthorized('Invalid token', 'Bearer')
+  }
+}
+
+const createJwtScheme = (options) => {
+  return () => {
+    return {
+      authenticate: (request, h) => {
+        return authenticateToken(request, h, options)
       }
     }
-  })
+  }
+}
 
 // Locally there's no AWS identity provider to issue callers a WebIdentity JWT, so requests are trusted unverified.
-const localScheme = () => ({
-  authenticate: (_request, h) => h.authenticated({ credentials: {} })
-})
+const localScheme = () => {
+  return {
+    authenticate: (_request, h) => {
+      return h.authenticated({ credentials: {} })
+    }
+  }
+}
 
 /**
  * Registers the JWT auth strategy used to protect service-to-service endpoints.

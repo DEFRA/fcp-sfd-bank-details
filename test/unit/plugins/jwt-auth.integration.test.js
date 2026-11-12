@@ -1,3 +1,4 @@
+// Test framework dependencies
 import {
   SignJWT,
   UnsecuredJWT,
@@ -8,6 +9,7 @@ import {
 import { JWKSTimeout } from 'jose/errors'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 
+// Test helpers
 const issuer = 'https://issuer.example.com'
 const awsAccount = '123456789012'
 const callerSubject = `arn:aws:iam::${awsAccount}:role/fcp-sfd-frontend`
@@ -20,6 +22,8 @@ vi.stubEnv('CDP_JWT_ISSUER', issuer)
 vi.stubEnv('CDP_JWT_JWKS_URI', 'https://issuer.example.com/jwks.json')
 vi.stubEnv('AWS_ACCOUNT', awsAccount)
 
+// Things we need to mock
+//
 // The real JWKS would be fetched from AWS over the network, so a locally generated one is
 // served instead. Tests that need the lookup itself to fail swap this out for the test.
 let resolveJwks
@@ -28,13 +32,15 @@ vi.mock('jose', async (importOriginal) => {
 
   return {
     ...actual,
-    createRemoteJWKSet:
-      () =>
-      (...args) =>
-        resolveJwks(...args)
+    createRemoteJWKSet: () => {
+      return (...args) => {
+        return resolveJwks(...args)
+      }
+    }
   }
 })
 
+// Thing under test
 const { createServer } = await import('../../../src/server.js')
 
 describe('jwt auth with real tokens', () => {
@@ -71,12 +77,13 @@ describe('jwt auth with real tokens', () => {
     return jwt.sign(key ?? privateKey)
   }
 
-  const get = (path, token) =>
-    server.inject({
+  const get = (path, token) => {
+    return server.inject({
       method: 'GET',
       url: path,
       headers: token ? { authorization: `Bearer ${token}` } : {}
     })
+  }
 
   beforeAll(async () => {
     const pair = await generateKeyPair('RS256')

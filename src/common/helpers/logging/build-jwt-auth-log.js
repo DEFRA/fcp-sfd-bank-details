@@ -38,10 +38,12 @@ const buildError = (err) => {
  * @param {Error} err - The error thrown by jwtVerify
  * @returns {object} ECS log context
  */
-export const buildTokenRejectedLog = (request, err) => ({
-  event: buildEvent(request),
-  error: buildError(err)
-})
+export const buildTokenRejectedLog = (request, err) => {
+  return {
+    event: buildEvent(request),
+    error: buildError(err)
+  }
+}
 
 /**
  * Builds the log context for a request that could not be verified because the JSON Web Key
@@ -54,10 +56,12 @@ export const buildTokenRejectedLog = (request, err) => ({
  * @param {Error} err - The error thrown while resolving the JWKS
  * @returns {object} ECS log context
  */
-export const buildJwksUnavailableLog = (request, err) => ({
-  event: buildEvent(request),
-  error: {
-    ...buildError(err),
-    stack_trace: err.stack
+export const buildJwksUnavailableLog = (request, err) => {
+  return {
+    event: buildEvent(request),
+    error: {
+      ...buildError(err),
+      stack_trace: err.stack
+    }
   }
-})
+}
