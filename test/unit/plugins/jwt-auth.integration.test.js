@@ -1,4 +1,11 @@
-import { SignJWT, generateKeyPair, createLocalJWKSet, exportJWK } from 'jose'
+import {
+  SignJWT,
+  UnsecuredJWT,
+  generateKeyPair,
+  createLocalJWKSet,
+  exportJWK
+} from 'jose'
+import { JWKSTimeout } from 'jose/errors'
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 
 const issuer = 'https://issuer.example.com'
@@ -11,11 +18,19 @@ vi.stubEnv('CDP_JWT_ISSUER', issuer)
 vi.stubEnv('CDP_JWT_JWKS_URI', 'https://issuer.example.com/jwks.json')
 vi.stubEnv('AWS_ACCOUNT', awsAccount)
 
-let mockJwks
+// The real JWKS would be fetched from AWS over the network, so a locally generated one is
+// served instead. Tests that need the lookup itself to fail swap this out for the test.
+let resolveJwks
 vi.mock('jose', async (importOriginal) => {
   const actual = await importOriginal()
 
-  return { ...actual, createRemoteJWKSet: () => mockJwks }
+  return {
+    ...actual,
+    createRemoteJWKSet:
+      () =>
+      (...args) =>
+        resolveJwks(...args)
+  }
 })
 
 const { createServer } = await import('../../../src/server.js')
@@ -24,6 +39,7 @@ describe('jwt auth with real tokens', () => {
   let server
   let privateKey
   let otherPrivateKey
+  let localJwks
 
   const sign = ({
     sub = callerSubject,
@@ -31,16 +47,27 @@ describe('jwt auth with real tokens', () => {
     aud = 'fcp-sfd-bank-details',
     exp = '5m',
     alg = 'RS256',
+    kid = 'test-key',
+    nbf,
     key
-  } = {}) =>
-    new SignJWT({})
-      .setProtectedHeader({ alg, kid: 'test-key' })
-      .setSubject(sub)
+  } = {}) => {
+    const jwt = new SignJWT({})
+      .setProtectedHeader({ alg, kid })
       .setIssuer(iss)
       .setAudience(aud)
       .setIssuedAt()
       .setExpirationTime(exp)
-      .sign(key ?? privateKey)
+
+    if (sub) {
+      jwt.setSubject(sub)
+    }
+
+    if (nbf) {
+      jwt.setNotBefore(nbf)
+    }
+
+    return jwt.sign(key ?? privateKey)
+  }
 
   const get = (path, token) =>
     server.inject({
@@ -58,7 +85,8 @@ describe('jwt auth with real tokens', () => {
       kid: 'test-key',
       alg: 'RS256'
     }
-    mockJwks = createLocalJWKSet({ keys: [jwk] })
+    localJwks = createLocalJWKSet({ keys: [jwk] })
+    resolveJwks = localJwks
 
     server = await createServer()
     await server.initialize()
@@ -136,4 +164,79 @@ describe('jwt auth with real tokens', () => {
 
     expect(response.statusCode).toBe(401)
   })
+
+  test('should return 401 for a token with no subject', async () => {
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ sub: null })
+    )
+
+    expect(response.statusCode).toBe(401)
+  })
+
+  test('should return 401 for a token that is not yet valid', async () => {
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ nbf: '5m' })
+    )
+
+    expect(response.statusCode).toBe(401)
+  })
+
+  test('should return 401 for an unsigned token', async () => {
+    const token = new UnsecuredJWT({})
+      .setSubject(callerSubject)
+      .setIssuer(issuer)
+      .setAudience('fcp-sfd-bank-details')
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .encode()
+    const response = await get('/bank-details/107183280', token)
+
+    expect(response.statusCode).toBe(401)
+  })
+
+  test('should return 401 for a symmetrically signed token', async () => {
+    const token = await sign({
+      alg: 'HS256',
+      key: new TextEncoder().encode('not-a-real-secret-for-tests-only')
+    })
+    const response = await get('/bank-details/107183280', token)
+
+    expect(response.statusCode).toBe(401)
+  })
+
+  test('should return 401 for a token whose key id is not in the jwks', async () => {
+    const response = await get(
+      '/bank-details/107183280',
+      await sign({ kid: 'unknown-key' })
+    )
+
+    expect(response.statusCode).toBe(401)
+  })
+
+  test('should return 503 when the jwks cannot be retrieved', async () => {
+    resolveJwks = () => {
+      throw new JWKSTimeout()
+    }
+
+    try {
+      const response = await get('/bank-details/107183280', await sign())
+
+      expect(response.statusCode).toBe(503)
+    } finally {
+      resolveJwks = localJwks
+    }
+  })
+
+  test.each(['/example', '/example/1'])(
+    'should protect %s with the default strategy',
+    async (path) => {
+      const unauthenticated = await get(path)
+      const authenticated = await get(path, await sign())
+
+      expect(unauthenticated.statusCode).toBe(401)
+      expect(authenticated.statusCode).toBe(200)
+    }
+  )
 })

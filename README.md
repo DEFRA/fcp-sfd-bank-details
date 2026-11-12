@@ -14,6 +14,8 @@ Core delivery platform Node.js Backend Template.
   - [Formatting](#formatting)
     - [Windows prettier issue](#windows-prettier-issue)
 - [API endpoints](#api-endpoints)
+- [Service to service authentication](#service-to-service-authentication)
+  - [Environment variables](#environment-variables)
 - [Development helpers](#development-helpers)
   - [Proxy](#proxy)
 - [Docker](#docker)
@@ -122,6 +124,46 @@ git config --global core.autocrlf false
 | `GET: /health`       | Health                         |
 | `GET: /example    `  | Example API (remove as needed) |
 | `GET: /example/<id>` | Example API (remove as needed) |
+
+## Service to service authentication
+
+This service is called service to service, primarily by `fcp-sfd-frontend`. Every route
+except `/health` requires an AWS WebIdentity JWT in an `Authorization: Bearer <token>`
+header. `/health` is left open because the CDP platform health checks rely on it.
+
+`src/plugins/jwt-auth.js` registers the `jwt` strategy and sets it as the server default,
+so a new route is protected unless it explicitly opts out. For each request it:
+
+- verifies the token signature against the JSON Web Key Set published by the CDP identity
+  provider
+- checks the `iss`, `aud` and `sub` claims, and pins the algorithm to `RS256`
+- rejects anything that fails those checks with `401`, and returns `503` if the key set
+  itself could not be fetched, so an outage is not reported as a bad caller
+
+Checking the signature, issuer and audience alone only proves the token came from the
+platform. The `sub` check is what proves the caller is the frontend: `sub` is the IAM role
+ARN of the calling service, so it is compared against
+`arn:aws:iam::<AWS_ACCOUNT>:role/<BANK_DETAILS_ALLOWED_CALLER>`.
+
+The key set is hosted outside the CDP network, so the request to `CDP_JWT_JWKS_URI` has to
+go through the forward proxy. `jose` fetches it with the global `fetch`, which Node routes
+through the proxy using the environment variables described under
+[Proxy](#proxy) — no proxy wiring is needed in this service. Overriding `jose` with an HTTP
+client that has no proxy dispatcher would stop token verification working once deployed.
+
+### Environment variables
+
+| Variable                      | Description                                                                |
+| :---------------------------- | :------------------------------------------------------------------------- |
+| `CDP_JWT_ISSUER`              | Expected `iss` claim. Injected by the platform.                            |
+| `CDP_JWT_JWKS_URI`            | Where the signing keys are published. Injected by the platform.            |
+| `AWS_ACCOUNT`                 | AWS account id used to build the expected `sub`. Injected by the platform. |
+| `CDP_JWT_AUDIENCE`            | Expected `aud` claim. Defaults to `fcp-sfd-bank-details`.                  |
+| `BANK_DETAILS_ALLOWED_CALLER` | Service name permitted to call this API. Defaults to `fcp-sfd-frontend`.   |
+| `JWT_AUTH_BYPASS`             | Local development only. See [Development](#development).                   |
+
+The service refuses to start if `CDP_JWT_ISSUER`, `CDP_JWT_JWKS_URI` or `AWS_ACCOUNT` are
+missing and the bypass is off, rather than starting up unprotected.
 
 ## Development helpers
 
