@@ -30,7 +30,10 @@
 import Boom from '@hapi/boom'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 import { JOSEError, JWKSInvalid, JWKSTimeout } from 'jose/errors'
-import { buildJwksUnavailableLog, buildTokenRejectedLog } from '../common/helpers/logging/build-jwt-auth-log.js'
+import {
+  buildJwksUnavailableLog,
+  buildTokenRejectedLog
+} from '../common/helpers/logging/build-jwt-auth-log.js'
 import { config } from '../config.js'
 
 // Claim AWS STS adds to a WebIdentity token, carrying the caller's principal id and tags.
