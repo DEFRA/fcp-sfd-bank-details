@@ -25,6 +25,20 @@ description: Testing standards and conventions for this project. Use when writin
 - Config changes: valid and invalid values (convict validates strictly).
 - Test names describe behaviour, e.g. `should return 404 when no bank details exist for the SBI`.
 
+## Readability
+
+- Do not use `test.each()`, `it.each()` or `describe.each()`. Write each case as its own
+  `test()` with a name that states the behaviour in full.
+- The reason is onboarding: a parameterised block asks the reader to resolve a case table
+  against a templated name (`'should accept %s'`) before they can tell what any single case
+  proves. An explicit test reads top to bottom, and a failure names the behaviour that broke
+  rather than an index into a table.
+- Accept the repetition. If expanding a block would duplicate a long assertion, that usually
+  means the block was testing two things at once — split the shared assertion into its own
+  test rather than repeating it in every case.
+- Prefer a named helper over a loop if setup genuinely needs sharing, so the call site still
+  reads as a sentence.
+
 ## Test data
 
 - Use obviously fake values. No real SBIs, FRNs, account numbers, sort codes or names.
