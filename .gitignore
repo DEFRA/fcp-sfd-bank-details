@@ -9,6 +9,3 @@ coverage
 .cache
 .eslintcache
 .env
-
-# ECS logging compliance audit report, generated locally
-ECS-LOGGING-AUDIT.md
