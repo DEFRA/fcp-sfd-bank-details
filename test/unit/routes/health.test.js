@@ -1,3 +1,7 @@
+// Test framework dependencies
+import { vi, describe, test, expect } from 'vitest'
+
+// Thing under test
 import { health } from '../../../src/routes/health.js'
 
 describe('Health endpoint', () => {

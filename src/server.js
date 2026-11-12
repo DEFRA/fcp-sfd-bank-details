@@ -9,7 +9,7 @@ import { requestTracing } from './plugins/request-tracing.js'
 import { jwtAuth } from './plugins/jwt-auth.js'
 import { metrics } from '@defra/cdp-metrics'
 
-export async function createServer() {
+export const createServer = async () => {
   const server = Hapi.server({
     host: config.get('host'),
     port: config.get('port'),

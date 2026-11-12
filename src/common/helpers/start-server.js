@@ -2,7 +2,7 @@ import { config } from '../../config.js'
 
 import { createServer } from '../../server.js'
 
-export async function startServer() {
+export const startServer = async () => {
   const server = await createServer()
   await server.start()
 
