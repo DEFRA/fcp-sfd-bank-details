@@ -1,3 +1,7 @@
+// Test framework dependencies
+import { vi, describe, test, expect } from 'vitest'
+
+// Thing under test
 import { bankDetails } from '../../../src/routes/bank-details.js'
 
 describe('Bank details endpoint', () => {
@@ -11,7 +15,8 @@ describe('Bank details endpoint', () => {
   })
 
   test('should return a fake bank details data set for the given SBI', () => {
-    const mockRequest = { params: { sbi: '107183280' } }
+    // Synthetic SBI, in the 800000000 to 899999999 range reserved for test data.
+    const mockRequest = { params: { sbi: '800000001' } }
     const mockH = {
       response: vi.fn().mockReturnValue({ statusCode: 200 })
     }
@@ -19,7 +24,7 @@ describe('Bank details endpoint', () => {
     const result = bankDetails.handler(mockRequest, mockH)
 
     expect(mockH.response).toHaveBeenCalledWith({
-      sbi: '107183280',
+      sbi: '800000001',
       accountName: 'J R Farmer & Son',
       accountNumber: '12345678',
       sortCode: '12-34-56',

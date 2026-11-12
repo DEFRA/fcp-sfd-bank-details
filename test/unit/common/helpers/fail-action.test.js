@@ -1,3 +1,7 @@
+// Test framework dependencies
+import { describe, test, expect } from 'vitest'
+
+// Thing under test
 import { failAction } from '../../../../src/common/helpers/fail-action.js'
 
 describe('#fail-action', () => {

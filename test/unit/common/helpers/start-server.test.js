@@ -1,3 +1,5 @@
+// Test framework dependencies
+import { vi, describe, test, expect, beforeAll, afterAll } from 'vitest'
 import hapi from '@hapi/hapi'
 
 describe('#startServer', () => {
