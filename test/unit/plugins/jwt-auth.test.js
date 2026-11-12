@@ -371,30 +371,87 @@ describe('jwtAuth', () => {
       ).rejects.toMatchObject({ output: { statusCode: 401 } })
     })
 
-    test.each([
-      ['the jwks request times out', () => new JWKSTimeout()],
-      ['the jwks is malformed', () => new JWKSInvalid('bad jwks')],
-      ['the jwks cannot be read', () => new JOSEError('request failed')],
-      ['the jwks host is unreachable', () => new TypeError('fetch failed')]
-    ])('should reject with a 503 when %s', async (_description, buildError) => {
-      mockJwtVerify.mockRejectedValue(buildError())
+    test('should reject with a 503 when the jwks request times out', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
       const { scheme } = await registerWithEnvironment('test')
-      const request = buildRequest('Bearer mockToken')
 
-      await expect(scheme.authenticate(request, h)).rejects.toMatchObject({
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
         message: 'Unable to verify token',
         output: { statusCode: 503 }
       })
+    })
+
+    test('should reject with a 503 when the jwks is malformed', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSInvalid('bad jwks'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should reject with a 503 when the jwks cannot be read', async () => {
+      mockJwtVerify.mockRejectedValue(new JOSEError('request failed'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should reject with a 503 when the jwks host is unreachable', async () => {
+      mockJwtVerify.mockRejectedValue(new TypeError('fetch failed'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should log a jwks failure as an error with a stack trace', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
+      const { scheme } = await registerWithEnvironment('test')
+      const request = buildRequest('Bearer mockToken')
+
+      await expect(scheme.authenticate(request, h)).rejects.toThrow()
+
       expect(request.logger.error).toHaveBeenCalledWith(
         {
-          event: expect.objectContaining({
+          event: {
             type: 'jwt_verification',
+            action: 'get',
+            category: '/bank-details/800000001',
             outcome: 'failure'
-          }),
-          error: expect.objectContaining({ stack_trace: expect.any(String) })
+          },
+          error: {
+            code: 'ERR_JWKS_TIMEOUT',
+            message: 'request timed out',
+            stack_trace: expect.any(String),
+            type: 'JWKSTimeout'
+          }
         },
         'Could not verify JWT, the JSON Web Key Set was unavailable'
       )
+    })
+
+    test('should not log a jwks failure as a token rejection', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
+      const { scheme } = await registerWithEnvironment('test')
+      const request = buildRequest('Bearer mockToken')
+
+      await expect(scheme.authenticate(request, h)).rejects.toThrow()
+
       expect(request.logger.warn).not.toHaveBeenCalled()
     })
   })

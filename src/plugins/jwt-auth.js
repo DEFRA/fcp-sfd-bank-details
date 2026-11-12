@@ -61,18 +61,15 @@ const createJwtScheme =
       }
 
       const token = match[1]
+      const { JWKS } = request.server.app
 
       try {
-        const { payload, protectedHeader } = await jwtVerify(
-          token,
-          request.server.app.JWKS,
-          {
-            issuer,
-            audience,
-            subject,
-            algorithms: ['RS256']
-          }
-        )
+        const { payload, protectedHeader } = await jwtVerify(token, JWKS, {
+          issuer,
+          audience,
+          subject,
+          algorithms: ['RS256']
+        })
 
         return h.authenticated({
           credentials: {

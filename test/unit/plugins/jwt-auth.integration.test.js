@@ -225,14 +225,19 @@ describe('jwt auth with real tokens', () => {
     }
   })
 
-  test.each(['/example', '/example/1'])(
-    'should protect %s with the default strategy',
-    async (path) => {
-      const unauthenticated = await get(path)
-      const authenticated = await get(path, await sign())
+  test('should protect /example with the default strategy', async () => {
+    const unauthenticated = await get('/example')
+    const authenticated = await get('/example', await sign())
 
-      expect(unauthenticated.statusCode).toBe(401)
-      expect(authenticated.statusCode).toBe(200)
-    }
-  )
+    expect(unauthenticated.statusCode).toBe(401)
+    expect(authenticated.statusCode).toBe(200)
+  })
+
+  test('should protect /example/{id} with the default strategy', async () => {
+    const unauthenticated = await get('/example/1')
+    const authenticated = await get('/example/1', await sign())
+
+    expect(unauthenticated.statusCode).toBe(401)
+    expect(authenticated.statusCode).toBe(200)
+  })
 })
