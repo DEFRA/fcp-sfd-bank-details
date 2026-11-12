@@ -11,6 +11,8 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 const issuer = 'https://issuer.example.com'
 const awsAccount = '123456789012'
 const callerSubject = `arn:aws:iam::${awsAccount}:role/fcp-sfd-frontend`
+// Synthetic SBI, in the 800000000 to 899999999 range reserved for test data.
+const protectedPath = '/bank-details/800000001'
 
 vi.stubEnv('ENVIRONMENT', 'test')
 vi.stubEnv('JWT_AUTH_BYPASS', 'false')
@@ -97,13 +99,13 @@ describe('jwt auth with real tokens', () => {
   })
 
   test('should allow a valid token from the allowed caller', async () => {
-    const response = await get('/bank-details/107183280', await sign())
+    const response = await get(protectedPath, await sign())
 
     expect(response.statusCode).toBe(200)
   })
 
   test('should return 401 for a protected route without a token', async () => {
-    const response = await get('/bank-details/107183280')
+    const response = await get(protectedPath)
 
     expect(response.statusCode).toBe(401)
   })
@@ -116,7 +118,7 @@ describe('jwt auth with real tokens', () => {
 
   test('should return 401 for a token with the wrong issuer', async () => {
     const response = await get(
-      '/bank-details/107183280',
+      protectedPath,
       await sign({ iss: 'https://evil.example.com' })
     )
 
@@ -125,7 +127,7 @@ describe('jwt auth with real tokens', () => {
 
   test('should return 401 for a token with the wrong audience', async () => {
     const response = await get(
-      '/bank-details/107183280',
+      protectedPath,
       await sign({ aud: 'another-service' })
     )
 
@@ -134,7 +136,7 @@ describe('jwt auth with real tokens', () => {
 
   test('should return 401 for a token with the wrong subject', async () => {
     const response = await get(
-      '/bank-details/107183280',
+      protectedPath,
       await sign({ sub: `arn:aws:iam::${awsAccount}:role/other-service` })
     )
 
@@ -143,7 +145,7 @@ describe('jwt auth with real tokens', () => {
 
   test('should return 401 for a token with an expired', async () => {
     const response = await get(
-      '/bank-details/107183280',
+      protectedPath,
       await sign({ exp: Math.floor(Date.now() / 1000) - 60 })
     )
 
@@ -152,7 +154,7 @@ describe('jwt auth with real tokens', () => {
 
   test('should return 401 for a token signed with an unknown key', async () => {
     const token = await sign({ key: otherPrivateKey })
-    const response = await get('/bank-details/107183280', token)
+    const response = await get(protectedPath, token)
 
     expect(response.statusCode).toBe(401)
   })
@@ -160,25 +162,19 @@ describe('jwt auth with real tokens', () => {
   test('should return 401 for a token using an unsupported algorithm', async () => {
     const { privateKey: rs384Key } = await generateKeyPair('RS384')
     const token = await sign({ alg: 'RS384', key: rs384Key })
-    const response = await get('/bank-details/107183280', token)
+    const response = await get(protectedPath, token)
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token with no subject', async () => {
-    const response = await get(
-      '/bank-details/107183280',
-      await sign({ sub: null })
-    )
+    const response = await get(protectedPath, await sign({ sub: null }))
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token that is not yet valid', async () => {
-    const response = await get(
-      '/bank-details/107183280',
-      await sign({ nbf: '5m' })
-    )
+    const response = await get(protectedPath, await sign({ nbf: '5m' }))
 
     expect(response.statusCode).toBe(401)
   })
@@ -191,7 +187,7 @@ describe('jwt auth with real tokens', () => {
       .setIssuedAt()
       .setExpirationTime('5m')
       .encode()
-    const response = await get('/bank-details/107183280', token)
+    const response = await get(protectedPath, token)
 
     expect(response.statusCode).toBe(401)
   })
@@ -201,14 +197,14 @@ describe('jwt auth with real tokens', () => {
       alg: 'HS256',
       key: new TextEncoder().encode('not-a-real-secret-for-tests-only')
     })
-    const response = await get('/bank-details/107183280', token)
+    const response = await get(protectedPath, token)
 
     expect(response.statusCode).toBe(401)
   })
 
   test('should return 401 for a token whose key id is not in the jwks', async () => {
     const response = await get(
-      '/bank-details/107183280',
+      protectedPath,
       await sign({ kid: 'unknown-key' })
     )
 
@@ -221,7 +217,7 @@ describe('jwt auth with real tokens', () => {
     }
 
     try {
-      const response = await get('/bank-details/107183280', await sign())
+      const response = await get(protectedPath, await sign())
 
       expect(response.statusCode).toBe(503)
     } finally {
