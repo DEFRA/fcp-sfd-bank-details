@@ -238,7 +238,13 @@ Instructions for setting up SonarCloud can be found in [sonar-project.properties
 
 ## Pre-commit hook
 
-A [Husky](https://typicode.github.io/husky/) pre-commit hook runs [`sfd-id-check`](https://github.com/DEFRA/fcp-sfd-core/tree/main/scripts/check-synthetic-ids), which blocks commits that add real-looking CRNs or SBIs. Pull requests run the same check.
+A [Husky](https://typicode.github.io/husky/) pre-commit hook runs:
+
+- [`sfd-id-check`](https://github.com/DEFRA/fcp-sfd-core/tree/main/scripts/check-synthetic-ids): blocks commits that add real-looking CRNs or SBIs. Pull requests run the same check.
+- [`detect-secrets`](https://github.com/Yelp/detect-secrets): scans staged files for secrets against [`.secrets.baseline`](.secrets.baseline). If it isn't installed, the hook warns and skips it. Install it with `pip3 install detect-secrets`. Pull requests scan all tracked files.
+- `npm run lint:fix`: runs ESLint with neostandard and `--fix`.
+
+Commit from the command line to see the full hook output.
 
 Enable the hook once per clone:
 
@@ -248,6 +254,15 @@ npm run setup:husky
 ```
 
 Use synthetic identifiers only: CRNs from `9000000000` to `9999999999` and SBIs from `800000000` to `899999999`. If a flagged number isn't a CRN or SBI, such as a timestamp, add `sfd-id-check: allow` in a comment on the same line, or list it in `.sfd-id-check-allow`. See the [`sfd-id-check` README](https://github.com/DEFRA/fcp-sfd-core/tree/main/scripts/check-synthetic-ids) for details.
+
+If detect-secrets flags a value that isn't a secret, such as a fake local credential, update the baseline and mark the finding as a false positive:
+
+```bash
+detect-secrets scan --baseline .secrets.baseline
+detect-secrets audit .secrets.baseline
+```
+
+Commit the updated `.secrets.baseline`. Never add real secrets to the baseline; remove them and rotate them instead.
 
 ## Licence
 

@@ -29,7 +29,8 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - `docker compose up --build`: run with local AWS emulation
 - `npm test` / `npm run test:watch`: Vitest with coverage / watch
 - `npm run lint:fix` and `npm run format`: fix lint and formatting
-- `npm run git:pre-commit-hook`: audit, format check, lint and test; run before pushing
+- `npm run setup:husky`: enable the pre-commit hook (synthetic ID check, detect-secrets, `lint:fix`)
+- Before pushing, run `npm run security-audit`, `npm run format:check`, `npm run lint` and `npm test` (CI runs the same checks)
 
 ## Architecture
 
