@@ -61,13 +61,15 @@ npm run git:hooks
 
 ### Development
 
-To run the application in `development` mode run:
+To run the application on your machine in `development` mode, on `http://localhost:3010`, with nodemon restarting it when files in `src/` change:
 
 ```bash
-npm run dev
+npm run start:watch
 ```
 
-The `dev` and `dev:debug` scripts set `JWT_AUTH_BYPASS=true`, which skips JWT verification because the CDP identity provider is not available locally. The bypass is disabled by default and the service refuses to start with it enabled unless `ENVIRONMENT` is `local`.
+Use `npm run start:debug` to pause on startup until a debugger attaches (port 9229).
+
+The `start:watch` and `start:debug` scripts set `JWT_AUTH_BYPASS=true`, which skips JWT verification because the CDP identity provider is not available locally. The bypass is disabled by default and the service refuses to start with it enabled unless `ENVIRONMENT` is `local`.
 
 ### Testing
 
@@ -192,38 +194,49 @@ docker build --no-cache --tag fcp-sfd-bank-details .
 Run:
 
 ```bash
-docker run -e PORT=3004 -p 3004:3004 fcp-sfd-bank-details
+docker run -e PORT=3010 -p 3010:3010 fcp-sfd-bank-details
 ```
 
 ### Docker Compose
 
 A local environment with:
 
-- This service, available at `http://localhost:3004`.
-- Floci for future local AWS integrations, available at `http://localhost:4566`.
+- This service, available at `http://localhost:3010`, with the Node debugger on port `9233`.
+- [floci](https://floci.io) for local AWS emulation, available at `http://localhost:4566`.
 
-```bash
-docker compose up --build -d
-```
+| File | Purpose |
+| :--- | :------ |
+| `compose.yaml` | Services, images and environment variables |
+| `compose.override.yaml` | Local ports, source mounts and the shared `fcp-sfd` network (applied automatically by `docker compose up`) |
+| `compose.debug.yaml` | Starts the service with `npm run start:debug` |
+| `compose.test.yaml` | Runs `npm test` (lint, then tests with coverage) in a container |
+| `compose.test.watch.yaml` | Runs `npm run test:watch` in a container |
 
-Compose sets `ENVIRONMENT=local` and `JWT_AUTH_BYPASS=true`, so protected endpoints
-can be called without a JWT locally. It runs Node in watch mode using the container's
-environment variables; no `.env` file is loaded in the container. Add `.env` file usage when the service requires it.
+| Script | Description |
+| :----- | :---------- |
+| `npm run docker:build` | Build the images |
+| `npm run docker:dev` / `docker:dev:d` | Start the environment (attached / detached) |
+| `npm run docker:debug` | Start the environment, paused until a debugger attaches on port `9233` |
+| `npm run docker:stop` / `docker:stop:v` | Stop the environment (and remove volumes) |
+| `npm run docker:test` | Run lint and tests in a container; coverage is written to `coverage/` |
+| `npm run docker:test:watch` | Run tests in watch mode in a container |
+
+The service runs with nodemon, so changes in `src/` restart it. Compose sets `ENVIRONMENT=local` and `JWT_AUTH_BYPASS=true`, so protected endpoints can be called without a JWT locally.
+
+Compose reads a root `.env` file only to fill in `${VAR}` values in the Compose files; it is not passed into the container. If the service needs a value from `.env`, add it to the service's `environment` in `compose.yaml` as `VAR: ${VAR}`.
 
 Check the endpoints:
 
 ```bash
-curl -i http://localhost:3004/health
-curl -i http://localhost:3004/example
-curl -i http://localhost:3004/bank-details/800000001
+curl -i http://localhost:3010/health
+curl -i http://localhost:3010/example
+curl -i http://localhost:3010/bank-details/800000001
 ```
 
 The health endpoint returns `200` with `{"message":"success"}`. The example and
 bank-details endpoints currently return stub data, not data from an upstream system.
 
-The service does not currently use AWS resources. No buckets, queues,
-topics or subscriptions are created, and application startup does not depend on
-Floci. Add resource initialisation when an implemented integration requires it.
+The service does not currently use AWS resources. The `floci-init` container runs [floci/init.sh](floci/init.sh) once floci is ready; add the S3 buckets, SQS queues and SNS topics there when an integration needs them.
 
 ### Dependabot
 

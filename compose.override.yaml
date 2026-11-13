@@ -1,0 +1,31 @@
+name: fcp-sfd
+services:
+  fcp-sfd-bank-details:
+    ports:
+      - '3010:3010'
+      - '9233:9229'
+    volumes:
+      - ./src:/home/node/src
+      - ./package.json:/home/node/package.json
+    networks:
+      - fcp-sfd
+
+  floci:
+    ports:
+      - '4566:4566'
+    volumes:
+      - floci-data:/app/data
+    networks:
+      - fcp-sfd
+
+  floci-init:
+    networks:
+      - fcp-sfd
+
+volumes:
+  floci-data:
+
+networks:
+  fcp-sfd:
+    driver: bridge
+    name: fcp-sfd
