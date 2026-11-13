@@ -18,7 +18,7 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - Node **>= 24**, ESM (`"type": "module"`): use `import`/`export` and always include `.js` extensions.
 - Hapi 21, convict (config), Joi (validation), `@hapi/boom` (errors).
 - Logging via `hapi-pino` (ECS format); metrics, tracing and secure context via `@defra/*` CDP plugins.
-- Tests: Vitest. Lint: neostandard (ESLint). Format: Prettier.
+- Tests: Vitest. Lint and code style: neostandard (ESLint).
 - Outbound HTTP uses the CDP forward proxy via environment variables; do not add manual proxy agents.
 - Local AWS emulation: floci (via compose).
 
@@ -27,10 +27,10 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - `npm install`: install dependencies
 - `npm run dev`: run with watch on port 3004 (reads `.env`)
 - `docker compose up --build`: run with local AWS emulation
-- `npm test` / `npm run test:watch`: Vitest with coverage / watch
-- `npm run lint:fix` and `npm run format`: fix lint and formatting
+- `npm test` / `npm run test:watch`: Vitest with coverage / watch (`npm test` runs `lint` first)
+- `npm run lint` / `npm run lint:fix`: check / fix lint and code style
 - `npm run setup:husky`: enable the pre-commit hook (synthetic ID check, detect-secrets, `lint:fix`)
-- Before pushing, run `npm run security-audit`, `npm run format:check`, `npm run lint` and `npm test` (CI runs the same checks)
+- Before pushing, run `npm run security-audit` and `npm test` (CI runs the same checks)
 
 ## Architecture
 
@@ -48,7 +48,8 @@ Keep dependencies flowing inward:
 
 ## Conventions
 
-- No semicolons, 2-space indent, single quotes. Run lint and format before committing.
+- No semicolons, 2-space indent, single quotes (enforced by neostandard). Run `npm run lint:fix` before committing.
+- Don't extend or modify the neostandard ruleset (FCP standard): no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments. Fix the code instead.
 - Validate all params, query and payload with Joi. Return errors with Boom, and never leak stack traces or upstream error bodies.
 - Authenticate callers on every non-health route. Local auth bypass is for `ENVIRONMENT=local` only.
 - Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads.

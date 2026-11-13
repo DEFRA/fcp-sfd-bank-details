@@ -12,7 +12,7 @@ Core delivery platform Node.js Backend Template.
   - [Npm scripts](#npm-scripts)
   - [Update dependencies](#update-dependencies)
   - [Formatting](#formatting)
-    - [Windows prettier issue](#windows-prettier-issue)
+    - [Line endings on Windows](#line-endings-on-windows)
 - [API endpoints](#api-endpoints)
 - [Service to service authentication](#service-to-service-authentication)
   - [Environment variables](#environment-variables)
@@ -109,9 +109,11 @@ ncu --interactive --format group
 
 ### Formatting
 
-#### Windows prettier issue
+[neostandard](https://github.com/neostandard/neostandard) (ESLint) handles both linting and code style. Run `npm run lint` to check and `npm run lint:fix` to fix. `npm test` runs `lint` first.
 
-If you are having issues with formatting of line breaks on Windows update your global git config by running:
+#### Line endings on Windows
+
+If you are having issues with line endings on Windows update your global git config by running:
 
 ```bash
 git config --global core.autocrlf false

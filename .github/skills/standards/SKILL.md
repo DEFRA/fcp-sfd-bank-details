@@ -35,6 +35,7 @@ This document defines the standards an agent must apply when reviewing or writin
 - External calls have timeouts and bounded retries.
 - No inline comments unless the why is genuinely non-obvious.
 - No error handling for scenarios that cannot happen, and no abstractions for a single use case.
+- Follow the FCP standard for neostandard: don't extend or modify its ruleset (no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments). `eslint.config.js` only passes `.gitignore`-based `ignores`.
 
 ## Testing
 
@@ -54,7 +55,7 @@ See [Standards review checklist](./review-checklist.md).
 
 Before completing any task:
 
-1. `npm run lint` and `npm run format:check` pass
+1. `npm run lint` passes
 2. `npm test` passes with coverage at or above 90%
 3. No `console.*`, `.only`, or commented-out code
 4. No unintended files changed

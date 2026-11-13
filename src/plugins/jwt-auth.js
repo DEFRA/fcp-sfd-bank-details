@@ -174,10 +174,10 @@ export const jwtAuth = {
       const scheme = bypass
         ? localScheme
         : createJwtScheme({
-            audience: config.get('auth.jwt.audience'),
-            issuer: config.get('auth.jwt.issuer'),
-            subject: `arn:aws:iam::${config.get('auth.jwt.awsAccount')}:role/${config.get('auth.jwt.allowedCallerServiceName')}`
-          })
+          audience: config.get('auth.jwt.audience'),
+          issuer: config.get('auth.jwt.issuer'),
+          subject: `arn:aws:iam::${config.get('auth.jwt.awsAccount')}:role/${config.get('auth.jwt.allowedCallerServiceName')}`
+        })
 
       server.auth.scheme('jwt-proxy', scheme)
       server.auth.strategy('jwt', 'jwt-proxy')
