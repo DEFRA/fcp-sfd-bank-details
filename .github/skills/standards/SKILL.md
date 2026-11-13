@@ -35,6 +35,7 @@ This document defines the standards an agent must apply when reviewing or writin
 - External calls have timeouts and bounded retries.
 - No inline comments unless the why is genuinely non-obvious.
 - No error handling for scenarios that cannot happen, and no abstractions for a single use case.
+- Follow the FCP standard for neostandard: don't extend or modify its ruleset (no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments). `eslint.config.js` only passes `.gitignore`-based `ignores`.
 
 ## Testing
 

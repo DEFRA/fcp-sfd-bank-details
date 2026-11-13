@@ -49,6 +49,7 @@ Keep dependencies flowing inward:
 ## Conventions
 
 - No semicolons, 2-space indent, single quotes (enforced by neostandard). Run `npm run lint:fix` before committing.
+- Don't extend or modify the neostandard ruleset (FCP standard): no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments. Fix the code instead.
 - Validate all params, query and payload with Joi. Return errors with Boom, and never leak stack traces or upstream error bodies.
 - Authenticate callers on every non-health route. Local auth bypass is for `ENVIRONMENT=local` only.
 - Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads.
