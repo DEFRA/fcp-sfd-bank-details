@@ -73,11 +73,15 @@ The `start:watch` and `start:debug` scripts set `JWT_AUTH_BYPASS=true`, which sk
 
 ### Testing
 
-To test the application run:
+To lint and test the application with coverage run:
 
 ```bash
-npm run test
+npm test
 ```
+
+Use `npm run test:watch` for watch mode, or `npm run docker:test` to run the tests in a container.
+
+Tests are split into `test/unit/` (single modules, dependencies mocked) and `test/integration/narrow/` (the real server called through `server.inject()`, upstreams mocked). Both mirror `src/`. `test/setup.js` runs before each test file and mocks `fetch` globally.
 
 ### Production
 

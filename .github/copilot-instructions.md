@@ -61,8 +61,9 @@ Keep dependencies flowing inward:
 
 ## Testing
 
-- Tests live in `test/unit/`, mirroring `src/`. Name tests by behaviour (`should return 404 when no bank details exist for the SBI`).
-- Test routes through `createServer()` and `server.inject()`; stop the server in teardown.
+- Unit tests live in `test/unit/` and narrow integration tests in `test/integration/narrow/`; both mirror `src/`. Name tests by behaviour (`should return 404 when no bank details exist for the SBI`).
+- Unit-test route handlers, and test routes end to end in `test/integration/narrow/` through `createServer()` and `server.inject()`; stop the server in teardown.
+- Vitest globals are off: import `describe`, `test`, `expect` and `vi` from `vitest`.
 - Cover the happy path, validation failure, auth failure and upstream failure (timeouts, 4xx/5xx) for every route.
-- Mock outbound calls (`fetchMock` is set up in `.vite/setup-files.js`); never hit real D365 or CRM in tests.
+- Mock outbound calls (`fetchMock` is set up in `test/setup.js`); never hit real D365 or CRM in tests.
 - Coverage must stay **at or above 90%** (SonarCloud quality gate).
