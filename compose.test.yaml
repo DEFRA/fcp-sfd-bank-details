@@ -1,0 +1,15 @@
+name: fcp-sfd-bank-details-test
+services:
+  fcp-sfd-bank-details:
+    container_name: fcp-sfd-bank-details-test
+    # coverage/ is a bind mount, so Vitest can't delete and recreate it
+    command: npm test -- --coverage.clean=false
+    volumes:
+      - ./src:/home/node/src
+      - ./test:/home/node/test
+      - ./.vite:/home/node/.vite
+      - ./package.json:/home/node/package.json
+      - ./vitest.config.js:/home/node/vitest.config.js
+      - ./eslint.config.js:/home/node/eslint.config.js
+      - ./.gitignore:/home/node/.gitignore
+      - ./coverage:/home/node/coverage

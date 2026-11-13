@@ -1,0 +1,42 @@
+services:
+  fcp-sfd-bank-details:
+    build:
+      target: development
+    image: fcp-sfd-bank-details-development
+    container_name: fcp-sfd-bank-details-development
+    depends_on:
+      floci-init:
+        condition: service_completed_successfully
+    environment:
+      PORT: 3010
+      NODE_ENV: development
+      ENVIRONMENT: local
+      JWT_AUTH_BYPASS: 'true'
+      AWS_EMF_ENVIRONMENT: Local
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+
+  # floci emulates AWS resources (S3, SQS, SNS etc) for local development. See https://floci.io
+  floci:
+    image: floci/floci:2.4.0
+    environment:
+      FLOCI_HOSTNAME: floci
+      FLOCI_DEFAULT_REGION: ${AWS_REGION:-eu-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+
+  floci-init:
+    image: amazon/aws-cli:latest
+    entrypoint: /bin/sh
+    command: /setup/init.sh
+    depends_on:
+      floci:
+        condition: service_started
+    environment:
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    volumes:
+      - ./floci/init.sh:/setup/init.sh

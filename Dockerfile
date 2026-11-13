@@ -1,5 +1,5 @@
 ARG PARENT_VERSION=3.2.4-node24.22.1
-ARG PORT=3004
+ARG PORT=3010
 ARG PORT_DEBUG=9229
 
 FROM defradigital/node-development:${PARENT_VERSION} AS development
@@ -15,7 +15,7 @@ COPY --chown=node:node package*.json ./
 RUN npm install --ignore-scripts --allow-git=all
 COPY --chown=node:node ./src ./src
 
-CMD [ "npm", "run", "docker:dev" ]
+CMD [ "npm", "run", "start:watch" ]
 
 FROM defradigital/node:${PARENT_VERSION} AS production
 ARG PARENT_VERSION

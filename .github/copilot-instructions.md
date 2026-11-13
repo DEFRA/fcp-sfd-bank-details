@@ -25,8 +25,9 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 ## Commands
 
 - `npm install`: install dependencies
-- `npm run dev`: run with watch on port 3004 (reads `.env`)
-- `docker compose up --build`: run with local AWS emulation
+- `npm run start:watch`: run on the host with nodemon on port 3010 (reads `.env`)
+- `npm run docker:dev` / `npm run docker:debug`: run in Docker Compose with local AWS emulation (floci); debugger on host port 9233
+- `npm run docker:test`: run lint and tests in a container
 - `npm test` / `npm run test:watch`: Vitest with coverage / watch (`npm test` runs `lint` first)
 - `npm run lint` / `npm run lint:fix`: check / fix lint and code style
 - `npm run setup:husky`: enable the pre-commit hook (synthetic ID check, detect-secrets, `lint:fix`)

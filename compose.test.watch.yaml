@@ -1,0 +1,3 @@
+services:
+  fcp-sfd-bank-details:
+    command: npm run test:watch
