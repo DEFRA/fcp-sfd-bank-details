@@ -1,5 +1,14 @@
+// Test framework dependencies
 import { vi, beforeEach, describe, test, expect } from 'vitest'
+import {
+  JOSEError,
+  JWKSInvalid,
+  JWKSNoMatchingKey,
+  JWKSTimeout,
+  JWSSignatureVerificationFailed
+} from 'jose/errors'
 
+// Things we need to mock
 const mockConfigGet = vi.fn()
 vi.mock('../../../src/config.js', () => ({
   config: {
@@ -9,31 +18,28 @@ vi.mock('../../../src/config.js', () => ({
 
 const mockJwtVerify = vi.fn()
 const mockCreateRemoteJWKSet = vi.fn()
-const mockCustomFetch = Symbol('customFetch')
 vi.mock('jose', () => ({
   jwtVerify: mockJwtVerify,
-  createRemoteJWKSet: mockCreateRemoteJWKSet,
-  customFetch: mockCustomFetch
+  createRemoteJWKSet: mockCreateRemoteJWKSet
 }))
 
-const mockUndiciFetch = vi.fn()
-vi.mock('undici', () => ({
-  fetch: mockUndiciFetch
-}))
-
+// Thing under test
 const { jwtAuth } = await import('../../../src/plugins/jwt-auth.js')
 
+// Test helpers
 const jwksUri = 'https://example.com/.well-known/jwks.json'
 const mockJwks = Symbol('jwks')
 
-const buildServer = () => ({
-  app: {},
-  auth: {
-    scheme: vi.fn(),
-    strategy: vi.fn(),
-    default: vi.fn()
+const buildServer = () => {
+  return {
+    app: {},
+    auth: {
+      scheme: vi.fn(),
+      strategy: vi.fn(),
+      default: vi.fn()
+    }
   }
-})
+}
 
 const registerWithEnvironment = async (cdpEnvironment, overrides = {}) => {
   const values = {
@@ -124,9 +130,7 @@ describe('jwtAuth', () => {
     test('should create the remote JWKS from the configured uri', async () => {
       await registerWithEnvironment('test')
 
-      expect(mockCreateRemoteJWKSet).toHaveBeenCalledWith(new URL(jwksUri), {
-        [mockCustomFetch]: expect.any(Function)
-      })
+      expect(mockCreateRemoteJWKSet).toHaveBeenCalledWith(new URL(jwksUri))
     })
 
     test('should store the JWKS on server.app', async () => {
@@ -135,17 +139,12 @@ describe('jwtAuth', () => {
       expect(server.app.JWKS).toBe(mockJwks)
     })
 
-    test('should fetch the JWKS using undici', async () => {
+    test('should leave jose to fetch the JWKS so the request uses the CDP proxy', async () => {
       await registerWithEnvironment('test')
 
       const [, options] = mockCreateRemoteJWKSet.mock.calls[0]
-      const url = new URL(jwksUri)
-      mockUndiciFetch.mockResolvedValue('response')
 
-      const result = await options[mockCustomFetch](url, { method: 'GET' })
-
-      expect(mockUndiciFetch).toHaveBeenCalledWith(url, { method: 'GET' })
-      expect(result).toBe('response')
+      expect(options).toBeUndefined()
     })
   })
 
@@ -191,11 +190,15 @@ describe('jwtAuth', () => {
   describe('jwt scheme', () => {
     const h = { authenticated: vi.fn((result) => result) }
 
-    const buildRequest = (authorization) => ({
-      headers: { authorization },
-      server: { app: { JWKS: mockJwks } },
-      logger: { warn: vi.fn() }
-    })
+    const buildRequest = (authorization) => {
+      return {
+        headers: { authorization },
+        method: 'get',
+        path: '/bank-details/800000001',
+        server: { app: { JWKS: mockJwks } },
+        logger: { warn: vi.fn(), error: vi.fn() }
+      }
+    }
 
     test('should reject a request with no authorization header', async () => {
       const { scheme } = await registerWithEnvironment('test')
@@ -336,7 +339,8 @@ describe('jwtAuth', () => {
 
     test('should authenticate with the token payload as credentials', async () => {
       const payload = { sub: 'mockSub', iss: 'mockIssuer' }
-      mockJwtVerify.mockResolvedValue({ payload })
+      const protectedHeader = { alg: 'RS256', kid: 'mockKid' }
+      mockJwtVerify.mockResolvedValue({ payload, protectedHeader })
       const { scheme } = await registerWithEnvironment('test')
 
       const result = await scheme.authenticate(
@@ -344,19 +348,40 @@ describe('jwtAuth', () => {
         h
       )
 
-      expect(h.authenticated).toHaveBeenCalledWith({
-        credentials: { token: payload, sub: 'mockSub' }
-      })
-      expect(result).toEqual({
-        credentials: { token: payload, sub: 'mockSub' }
-      })
+      const expected = {
+        credentials: {
+          token: payload,
+          sub: 'mockSub',
+          serviceName: undefined
+        },
+        artifacts: { protectedHeader, payload }
+      }
+
+      expect(h.authenticated).toHaveBeenCalledWith(expected)
+      expect(result).toEqual(expected)
+    })
+
+    test('should expose the calling service name from the sts claim', async () => {
+      const payload = {
+        sub: 'mockSub',
+        'https://sts.amazonaws.com/': {
+          principal_tags: { ServiceName: 'fcp-sfd-frontend' }
+        }
+      }
+      mockJwtVerify.mockResolvedValue({ payload, protectedHeader: {} })
+      const { scheme } = await registerWithEnvironment('test')
+
+      const result = await scheme.authenticate(
+        buildRequest('Bearer mockToken'),
+        h
+      )
+
+      expect(result.credentials.serviceName).toBe('fcp-sfd-frontend')
     })
 
     test('should reject with a generic 401 when verification fails', async () => {
       mockJwtVerify.mockRejectedValue(
-        Object.assign(new Error('signature verification failed'), {
-          code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED'
-        })
+        new JWSSignatureVerificationFailed('signature verification failed')
       )
       const { scheme } = await registerWithEnvironment('test')
       const request = buildRequest('Bearer mockToken')
@@ -366,9 +391,114 @@ describe('jwtAuth', () => {
         output: { statusCode: 401 }
       })
       expect(request.logger.warn).toHaveBeenCalledWith(
-        { code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED' },
+        {
+          event: {
+            type: 'jwt_verification',
+            action: 'get',
+            category: '/bank-details/800000001',
+            outcome: 'failure'
+          },
+          error: {
+            code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+            message: 'signature verification failed',
+            type: 'JWSSignatureVerificationFailed'
+          }
+        },
         'JWT verification failed'
       )
+    })
+
+    test('should reject with a 401 when the token is signed with a key that is not in the jwks', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSNoMatchingKey())
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({ output: { statusCode: 401 } })
+    })
+
+    test('should reject with a 503 when the jwks request times out', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should reject with a 503 when the jwks is malformed', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSInvalid('bad jwks'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should reject with a 503 when the jwks cannot be read', async () => {
+      mockJwtVerify.mockRejectedValue(new JOSEError('request failed'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should reject with a 503 when the jwks host is unreachable', async () => {
+      mockJwtVerify.mockRejectedValue(new TypeError('fetch failed'))
+      const { scheme } = await registerWithEnvironment('test')
+
+      await expect(
+        scheme.authenticate(buildRequest('Bearer mockToken'), h)
+      ).rejects.toMatchObject({
+        message: 'Unable to verify token',
+        output: { statusCode: 503 }
+      })
+    })
+
+    test('should log a jwks failure as an error with a stack trace', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
+      const { scheme } = await registerWithEnvironment('test')
+      const request = buildRequest('Bearer mockToken')
+
+      await expect(scheme.authenticate(request, h)).rejects.toThrow()
+
+      expect(request.logger.error).toHaveBeenCalledWith(
+        {
+          event: {
+            type: 'jwt_verification',
+            action: 'get',
+            category: '/bank-details/800000001',
+            outcome: 'failure'
+          },
+          error: {
+            code: 'ERR_JWKS_TIMEOUT',
+            message: 'request timed out',
+            stack_trace: expect.any(String),
+            type: 'JWKSTimeout'
+          }
+        },
+        'Could not verify JWT, the JSON Web Key Set was unavailable'
+      )
+    })
+
+    test('should not log a jwks failure as a token rejection', async () => {
+      mockJwtVerify.mockRejectedValue(new JWKSTimeout())
+      const { scheme } = await registerWithEnvironment('test')
+      const request = buildRequest('Bearer mockToken')
+
+      await expect(scheme.authenticate(request, h)).rejects.toThrow()
+
+      expect(request.logger.warn).not.toHaveBeenCalled()
     })
   })
 
