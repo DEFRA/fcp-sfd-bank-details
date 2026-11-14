@@ -127,11 +127,10 @@ git config --global core.autocrlf false
 
 ## API endpoints
 
-| Endpoint             | Description                    |
-| :------------------- | :----------------------------- |
-| `GET: /health`       | Health                         |
-| `GET: /example    `  | Example API (remove as needed) |
-| `GET: /example/<id>` | Example API (remove as needed) |
+| Endpoint                   | Description                                                  |
+| :------------------------- | :----------------------------------------------------------- |
+| `GET: /health`             | Health (no authentication)                                   |
+| `GET: /bank-details/{sbi}` | Bank details for a business (stub data; JWT authentication) |
 
 ## Service to service authentication
 
@@ -233,12 +232,11 @@ Check the endpoints:
 
 ```bash
 curl -i http://localhost:3010/health
-curl -i http://localhost:3010/example
 curl -i http://localhost:3010/bank-details/800000001
 ```
 
-The health endpoint returns `200` with `{"message":"success"}`. The example and
-bank-details endpoints currently return stub data, not data from an upstream system.
+The health endpoint returns `200` with `{"message":"success"}`. The
+bank-details endpoint currently returns stub data, not data from an upstream system.
 
 The service does not currently use AWS resources. The `floci-init` container runs [floci/init.sh](floci/init.sh) once floci is ready; add the S3 buckets, SQS queues and SNS topics there when an integration needs them.
 

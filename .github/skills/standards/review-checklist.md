@@ -51,7 +51,7 @@ Apply the Writing code and Refactoring sections in [SKILL.md](./SKILL.md).
 - Dependencies flow inward (routes -> services -> clients).
 - Handlers do not call upstreams directly; upstream response shapes are mapped at the client boundary.
 - No circular dependencies between modules.
-- Config is read only via `src/config.js`.
+- Config is read only via `src/config/index.js`.
 
 ## 7. Documentation
 

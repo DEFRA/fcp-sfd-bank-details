@@ -41,7 +41,7 @@ vi.mock('jose', async (importOriginal) => {
 })
 
 // Thing under test
-const { createServer } = await import('../../../../src/server.js')
+const { createServer } = await import('../../../../src/api/index.js')
 
 describe('jwt auth with real tokens', () => {
   let server
@@ -230,21 +230,5 @@ describe('jwt auth with real tokens', () => {
     } finally {
       resolveJwks = localJwks
     }
-  })
-
-  test('should protect /example with the default strategy', async () => {
-    const unauthenticated = await get('/example')
-    const authenticated = await get('/example', await sign())
-
-    expect(unauthenticated.statusCode).toBe(401)
-    expect(authenticated.statusCode).toBe(200)
-  })
-
-  test('should protect /example/{id} with the default strategy', async () => {
-    const unauthenticated = await get('/example/1')
-    const authenticated = await get('/example/1', await sign())
-
-    expect(unauthenticated.statusCode).toBe(401)
-    expect(authenticated.statusCode).toBe(200)
   })
 })
