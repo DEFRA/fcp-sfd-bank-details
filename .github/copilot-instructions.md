@@ -11,7 +11,7 @@ Backend service for the Single Front Door (SFD) on Defra's Future Farming and Co
 - raise a case in CRM for caseworker review where required
 - keep a like-for-like read API for legacy callers (e.g. the RPS portal) until they are retired
 
-The repo started as the CDP Node.js backend template. Anything that looks like a stub or template leftover (hard-coded data, `/example` routes) is temporary: **replace it rather than build on it**. The code is changing quickly, so check the current source in `src/` rather than assuming this file lists every route or module. Background is in [docs/bank_details_service_replacement_overview.md](../docs/bank_details_service_replacement_overview.md).
+The repo started as the CDP Node.js backend template. Anything that looks like a stub or template leftover (hard-coded data, stub routes) is temporary: **replace it rather than build on it**. The code is changing quickly, so check the current source in `src/` rather than assuming this file lists every route or module. Background is in [docs/bank_details_service_replacement_overview.md](../docs/bank_details_service_replacement_overview.md).
 
 ## Stack
 
@@ -39,13 +39,14 @@ Keep dependencies flowing inward:
 
 `routes → services → clients (D365, CRM, AWS, other upstreams)`
 
-- `src/server.js` builds the Hapi server and registers plugins; `src/plugins/` holds one plugin per concern.
-- `src/config.js` is the single source of config (convict, strict). Never read `process.env` elsewhere.
-- `src/routes/` holds thin handlers: validate input, call a service, shape the response.
+- `src/index.js` starts the server. `src/api/index.js` builds the Hapi server and registers plugins; `src/api/router.js` registers the routes.
+- `src/api/<route>/` holds one folder per route with thin handlers: validate input, call a service, shape the response. Routes are unversioned for now; versioning under `src/api/v1/` is tracked in FLS2-496.
+- `src/api/common/helpers/` holds server helpers (start-server, fail-action, pulse, request logging and tracing). `src/plugins/` holds custom Hapi plugins such as `jwt-auth.js`.
+- `src/config/index.js` is the single source of config (convict, strict), built from per-area files (`server.js`, `auth.js`, `logging.js`, `proxy.js`, `tracing.js`). Never read `process.env` elsewhere.
 - Business logic belongs in `src/services/`; calls to D365, CRM or other upstreams belong in dedicated client modules with timeouts, retries and token handling. Never call upstreams from handlers.
 - Keep D365/CRM response shapes at the client boundary. Map them to domain objects before they reach routes, so upstream changes don't leak into the API contract.
 - Long-running or asynchronous work (such as change requests and case creation) should be decoupled via queues rather than done inline in a request.
-- Shared helpers live in `src/common/helpers/`.
+- Logging lives in `src/logging/` (`logger.js`, `logger-options.js`). Shared utilities, including `build-*-log.js` log builders, live in `src/utils/`. Add `src/constants/` and `src/errors/` when the first file needs them.
 
 ## Conventions
 
@@ -56,7 +57,7 @@ Keep dependencies flowing inward:
 - Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads.
 - No real data, secrets or credentials in code, tests or fixtures; use obviously fake values.
 - Use named constants rather than magic values; no commented-out code; JSDoc on exported functions.
-- New config needs `doc`, `format`, `default` and `env` in `src/config.js`.
+- New config needs `doc`, `format`, `default` and `env` in the matching `src/config/*.js` file (add a new area file and spread it into `src/config/index.js` if none fits).
 - Pin exact dependency versions and check `npm audit`. Don't introduce alternative frameworks (Express, Jest, dotenv).
 
 ## Testing

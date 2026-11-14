@@ -19,7 +19,7 @@ This document defines the standards an agent must apply when reviewing or writin
 ## Reading code
 
 - Read the full function and its callers before making changes.
-- Check for existing helpers in `src/common/helpers/` before writing new ones.
+- Check for existing helpers in `src/api/common/helpers/` and `src/utils/` before writing new ones.
 - Search for all usages of a symbol before renaming or removing it.
 
 ## Writing code
@@ -29,7 +29,7 @@ This document defines the standards an agent must apply when reviewing or writin
 - Routes stay thin: validate input, call a service, shape the response.
 - Business logic lives in services; calls to D365, CRM, AWS or other upstreams live in client modules, never in handlers.
 - Map upstream response shapes to domain objects at the client boundary.
-- All config goes through `src/config.js` (convict). Never read `process.env` elsewhere.
+- All config goes through `src/config/index.js` (convict). Never read `process.env` elsewhere.
 - Validate input with Joi; return errors with Boom without leaking internals.
 - Log with the shared logger only. Never log bank details, other PII or full upstream payloads.
 - External calls have timeouts and bounded retries.

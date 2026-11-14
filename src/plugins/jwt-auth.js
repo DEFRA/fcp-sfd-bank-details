@@ -33,8 +33,8 @@ import { JOSEError, JWKSInvalid, JWKSTimeout } from 'jose/errors'
 import {
   buildJwksUnavailableLog,
   buildTokenRejectedLog
-} from '../common/helpers/logging/build-jwt-auth-log.js'
-import { config } from '../config.js'
+} from '../utils/build-jwt-auth-log.js'
+import { config } from '../config/index.js'
 
 // Claim AWS STS adds to a WebIdentity token, carrying the caller's principal id and tags.
 const STS_CLAIM = 'https://sts.amazonaws.com/'

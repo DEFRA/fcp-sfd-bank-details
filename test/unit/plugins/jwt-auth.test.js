@@ -10,7 +10,7 @@ import {
 
 // Things we need to mock
 const mockConfigGet = vi.fn()
-vi.mock('../../../src/config.js', () => ({
+vi.mock('../../../src/config/index.js', () => ({
   config: {
     get: mockConfigGet
   }
