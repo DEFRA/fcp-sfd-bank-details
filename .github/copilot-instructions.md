@@ -17,9 +17,9 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 
 - Node **>= 24**, ESM (`"type": "module"`): use `import`/`export` and always include `.js` extensions.
 - Hapi 21, convict (config), Joi (validation), `@hapi/boom` (errors).
-- Logging via `hapi-pino` (ECS format); metrics, tracing and secure context via `@defra/*` CDP plugins.
+- Logging via `hapi-pino` (ECS JSON in production, `pino-pretty` locally); metrics, tracing and secure context via `@defra/*` CDP plugins.
 - Tests: Vitest. Lint and code style: neostandard (ESLint).
-- Outbound HTTP uses the CDP forward proxy via environment variables; do not add manual proxy agents.
+- Outbound HTTP uses the CDP forward proxy via environment variables; do not add manual proxy agents or custom `undici` dispatchers (that bypasses the proxy and the request never leaves the network).
 - Local AWS emulation: floci (via compose).
 
 ## Commands
@@ -31,7 +31,7 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - `npm test` / `npm run test:watch`: Vitest with coverage / watch (`npm test` runs `lint` first)
 - `npm run lint` / `npm run lint:fix`: check / fix lint and code style
 - `npm run setup:husky`: enable the pre-commit hook (synthetic ID check, detect-secrets, `lint:fix`)
-- Before pushing, run `npm run security-audit` and `npm test` (CI runs the same checks, with tests via `npm run docker:test`)
+- Before pushing, run `npm run security-audit` and `npm test`. CI (`.github/workflows/check-pull-request.yml`) runs both (tests via `npm run docker:test`) plus the synthetic ID check, a `detect-secrets` scan of every tracked file, a Docker image build, SonarCloud and a dependency review that fails on high severity.
 - Pin GitHub Actions to a full commit SHA with the version in a trailing comment (`uses: owner/action@<sha> # v1.2.3`)
 
 ## Architecture
@@ -54,8 +54,10 @@ Keep dependencies flowing inward:
 - No semicolons, 2-space indent, single quotes (enforced by neostandard). Run `npm run lint:fix` before committing.
 - Don't extend or modify the neostandard ruleset (FCP standard): no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments. Fix the code instead.
 - Validate all params, query and payload with Joi. Return errors with Boom, and never leak stack traces or upstream error bodies.
-- Authenticate callers on every non-health route. Local auth bypass is for `ENVIRONMENT=local` only.
-- Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads.
+- Authenticate callers on every non-health route. `src/plugins/jwt-auth.js` registers the `jwt` strategy as the server default, so routes are protected unless they opt out; `/health` is the only route that sets `auth: false`.
+- Auth verifies AWS WebIdentity JWTs with `jose` against the remote JWKS, checking issuer, audience, RS256 and a subject role built from `AWS_ACCOUNT` and `BANK_DETAILS_ALLOWED_CALLER`, so only `fcp-sfd-frontend` can call protected routes. A rejected token is a 401; an unreachable JWKS is a 503, so an outage isn't reported as an auth failure.
+- `JWT_AUTH_BYPASS=true` skips verification and is for local development only: registration fails if it is set when `ENVIRONMENT` is not `local`. The `start:watch` and `start:debug` scripts, Docker Compose and `vitest.config.js` all enable it.
+- Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads. The `log.redact` paths in `src/config/logging.js` are a backstop, not a reason to log sensitive values.
 - No real data, secrets or credentials in code, tests or fixtures; use obviously fake values.
 - Use named constants rather than magic values; no commented-out code; JSDoc on exported functions.
 - New config needs `doc`, `format`, `default` and `env` in the matching `src/config/*.js` file (add a new area file and spread it into `src/config/index.js` if none fits).
@@ -68,4 +70,16 @@ Keep dependencies flowing inward:
 - Vitest globals are off: import `describe`, `test`, `expect` and `vi` from `vitest`.
 - Cover the happy path, validation failure, auth failure and upstream failure (timeouts, 4xx/5xx) for every route.
 - Mock outbound calls (`fetchMock` is set up in `test/setup.js`); never hit real D365 or CRM in tests.
+- `vitest.config.js` sets `JWT_AUTH_BYPASS=true`, so `createServer()` starts with the local auth scheme. Test rejected-caller behaviour against the real strategy rather than assuming the bypass.
 - Coverage must stay **at or above 90%** (SonarCloud quality gate).
+
+## Skills
+
+`.github/skills/` holds the detailed working rules for this repo. Follow them rather than restating them here:
+
+- `standards` — how to read, write and refactor code here, and the quality gates to clear before finishing a task.
+- `testing` — test framework, layout, naming and mocking rules. Load it whenever the work touches tests.
+- `code-review` — the Defra standards checklist to apply when reviewing a change.
+- `create-pr` and `create-jira-ticket` — the branch, PR and FLS2 ticket workflows.
+
+Where a skill overlaps with this file, the skill is the more detailed source. `README.md` is the human-facing guide to running and configuring the service.
