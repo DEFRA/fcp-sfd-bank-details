@@ -41,7 +41,7 @@ vi.mock('jose', async (importOriginal) => {
 })
 
 // Thing under test
-const { createServer } = await import('../../../src/server.js')
+const { createServer } = await import('../../../../src/server.js')
 
 describe('jwt auth with real tokens', () => {
   let server
