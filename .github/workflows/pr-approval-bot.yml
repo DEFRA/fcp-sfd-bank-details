@@ -18,8 +18,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            **Your PR is now approved 🎉**
-            Before merging, include `#patch` or `#major` in the merge commit message if this is a patch or major version.
-            This makes sure CDP deploys the correct version.
+            **Your PR is now approved**
+            Before merging, include `#patch` or `#major` in the commit message to explicitly declare patch or major updates respectively.
+            This ensures CDP deploys the correct version.
             Minor versions need nothing extra; CDP handles and deploys them automatically.
             Full details are in the [CDP documentation](https://portal.cdp-int.defra.cloud/documentation/how-to/microservices.md?q=bump%20a%20either%20the%20major%20or%20patch%20version%2C%20push%20a%20commit%20with#versioning-your-microservice).
