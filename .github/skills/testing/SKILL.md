@@ -14,8 +14,8 @@ description: Testing standards and conventions for this project. Use when writin
 ## Test layout
 
 - Test files must match `test/**/*.test.js`.
-- Unit tests live in `test/unit/` and mirror `src/` (`src/routes/health.js` -> `test/unit/routes/health.test.js`). They test one module in isolation, mocking its dependencies.
-- Narrow integration tests live in `test/integration/narrow/` and also mirror `src/` (`src/routes/health.js` -> `test/integration/narrow/routes/health.test.js`). They start the real server with `createServer()` and call it with `server.inject()`, so routing, validation, auth and error handling are exercised together. Upstreams are still mocked. Stop the server in teardown.
+- Unit tests live in `test/unit/` and mirror `src/` (`src/api/health/index.js` -> `test/unit/api/health/index.test.js`). They test one module in isolation, mocking its dependencies.
+- Narrow integration tests live in `test/integration/narrow/` and also mirror `src/` (`src/api/health/index.js` -> `test/integration/narrow/api/health/index.test.js`). They start the real server with `createServer()` and call it with `server.inject()`, so routing, validation, auth and error handling are exercised together. Upstreams are still mocked. Stop the server in teardown.
 - Every route has both: a unit test for the handler and a narrow integration test through `server.inject()`.
 - Shared test helpers go in `test/helpers/` and shared fixtures in `test/mocks/`. Create these folders when the first file needs them.
 - `test/setup.js` runs before every test file. Fetch is mocked globally there by `vitest-fetch-mock` (`fetchMock`). Never call real D365, CRM or AWS services.
@@ -57,5 +57,5 @@ description: Testing standards and conventions for this project. Use when writin
 - Full suite with coverage: `npm test`.
 - Watch mode: `npm run test:watch`.
 - In a container (as CI will): `npm run docker:test`.
-- Single file: `npx vitest run test/unit/routes/health.test.js` (set `TZ=UTC` as `npm test` does).
+- Single file: `npx vitest run test/unit/api/health/index.test.js` (set `TZ=UTC` as `npm test` does).
 - Coverage must stay at or above 90% (SonarCloud quality gate).
