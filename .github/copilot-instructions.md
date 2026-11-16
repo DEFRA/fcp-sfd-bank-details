@@ -31,7 +31,8 @@ The repo started as the CDP Node.js backend template. Anything that looks like a
 - `npm test` / `npm run test:watch`: Vitest with coverage / watch (`npm test` runs `lint` first)
 - `npm run lint` / `npm run lint:fix`: check / fix lint and code style
 - `npm run setup:husky`: enable the pre-commit hook (synthetic ID check, detect-secrets, `lint:fix`)
-- Before pushing, run `npm run security-audit` and `npm test` (CI runs the same checks)
+- Before pushing, run `npm run security-audit` and `npm test` (CI runs the same checks, with tests via `npm run docker:test`)
+- Pin GitHub Actions to a full commit SHA with the version in a trailing comment (`uses: owner/action@<sha> # v1.2.3`)
 
 ## Architecture
 

@@ -24,6 +24,7 @@ Core delivery platform Node.js Backend Template.
   - [Docker Compose](#docker-compose)
   - [Dependabot](#dependabot)
   - [SonarCloud](#sonarcloud)
+- [Continuous integration](#continuous-integration)
 - [Licence](#licence)
   - [About the licence](#about-the-licence)
 
@@ -252,6 +253,21 @@ Dependabot security updates must also be enabled in the repository's GitHub sett
 ### SonarCloud
 
 Instructions for setting up SonarCloud can be found in [sonar-project.properties](./sonar-project.properties)
+
+## Continuous integration
+
+[check-pull-request.yml](.github/workflows/check-pull-request.yml) runs on pull requests to `main` (and can be run manually). It:
+
+1. Checks for real-looking CRNs and SBIs, and scans all tracked files for secrets.
+2. Runs `npm run security-audit` and `npm run lint` on the runner.
+3. Builds the production Docker image.
+4. Runs the tests in a container with `npm run docker:test`, the same command as locally, and fails if `coverage/lcov.info` isn't generated.
+5. Runs a SonarCloud scan (skipped for Dependabot).
+6. Runs GitHub's dependency review, which fails on new dependencies with high or critical vulnerabilities.
+
+[pr-approval-bot.yml](.github/workflows/pr-approval-bot.yml) comments on approved pull requests to remind you to add `#patch` or `#major` to the merge commit when needed. [publish.yml](.github/workflows/publish.yml) builds and publishes the service to CDP on merge to `main`; [publish-hotfix.yml](.github/workflows/publish-hotfix.yml) does the same for hot fixes.
+
+All actions are pinned to a full commit SHA, with the version in a trailing comment. When updating an action, update the SHA and the comment together.
 
 ## Pre-commit hook
 

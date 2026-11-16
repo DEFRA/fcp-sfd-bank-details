@@ -1,0 +1,25 @@
+name: PR Approval Bot
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment-on-approval:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post a comment on approval
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Your PR is now approved 🎉**
+            Before merging, include `#patch` or `#major` in the merge commit message if this is a patch or major version.
+            This makes sure CDP deploys the correct version.
+            Minor versions need nothing extra; CDP handles and deploys them automatically.
+            Full details are in the [CDP documentation](https://portal.cdp-int.defra.cloud/documentation/how-to/microservices.md?q=bump%20a%20either%20the%20major%20or%20patch%20version%2C%20push%20a%20commit%20with#versioning-your-microservice).

@@ -4,12 +4,13 @@ on:
   pull_request:
     branches:
       - main
-      - minimal
     types:
       - opened
       - reopened
       - synchronize
       - ready_for_review
+
+  workflow_dispatch:
 
 jobs:
   pr-validator:
@@ -17,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0 # Depth 0 is required for SonarQube blame and new code detection
 
@@ -29,27 +30,47 @@ jobs:
           pipx install detect-secrets==1.5.0
           git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 
-      - name: Test code and Create Test Coverage Reports
-        uses: actions/setup-node@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Security audit
         run: npm run security-audit
 
-      - run: |
-          npm ci
-          npm test
+      # Also covers files outside the test container, such as .github/scripts
+      - name: Lint
+        run: npm run lint
 
       - name: Test Docker Image Build
+        run: docker build --no-cache --tag fcp-sfd-bank-details .
+
+      # The container runs as a different user, so it needs write access to the coverage mount
+      - name: Run Tests
         run: |
-          set +e
-          docker build --no-cache --tag cdp-node-backend-template .
-          exit $?
+          mkdir -p coverage
+          chmod -R a+rw coverage
+          npm run docker:test
+
+      - name: Check Coverage Report
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "::error::coverage/lcov.info was not generated"
+            exit 1
+          fi
 
       - name: SonarCloud Scan
         if: github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
