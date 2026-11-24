@@ -64,6 +64,9 @@
     },
     "@typescript-eslint/typescript-estree": {
       "minimatch": "11.0.4"
+    },
+    "nodemon": {
+      "minimatch": "11.0.4"
     }
   }
 }
