@@ -5,6 +5,7 @@ import { JWKSTimeout, JWTExpired } from 'jose/errors'
 // Thing under test
 import {
   buildJwksUnavailableLog,
+  buildJwtBypassEnabledLog,
   buildTokenRejectedLog
 } from '../../../src/utils/build-jwt-auth-log.js'
 
@@ -35,6 +36,17 @@ describe('JWT auth log', () => {
       const log = buildTokenRejectedLog(request, new JWTExpired('expired', {}))
 
       expect(log.error.stack_trace).toBeUndefined()
+    })
+  })
+
+  describe('buildJwtBypassEnabledLog', () => {
+    test('should nest every field under the event namespace', () => {
+      expect(buildJwtBypassEnabledLog()).toEqual({
+        event: {
+          type: 'jwt_verification',
+          action: 'bypass_enabled'
+        }
+      })
     })
   })
 

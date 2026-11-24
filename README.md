@@ -22,6 +22,7 @@ Core delivery platform Node.js Backend Template.
   - [Development image](#development-image)
   - [Production image](#production-image)
   - [Docker Compose](#docker-compose)
+    - [Running with fcp-sfd-frontend](#running-with-fcp-sfd-frontend)
   - [Dependabot](#dependabot)
   - [SonarCloud](#sonarcloud)
 - [Continuous integration](#continuous-integration)
@@ -71,6 +72,8 @@ npm run start:watch
 Use `npm run start:debug` to pause on startup until a debugger attaches (port 9229).
 
 The `start:watch` and `start:debug` scripts set `JWT_AUTH_BYPASS=true`, which skips JWT verification because the CDP identity provider is not available locally. The bypass is disabled by default and the service refuses to start with it enabled unless `ENVIRONMENT` is `local`.
+
+With the bypass on, every request is authenticated as `BANK_DETAILS_ALLOWED_CALLER` (default `fcp-sfd-frontend`). `request.auth.credentials` has the same shape as a verified token (`token`, `sub` and `serviceName`), with `sub` set to `arn:aws:iam::000000000000:role/<BANK_DETAILS_ALLOWED_CALLER>`. The fake account id means it can't be mistaken for a real identity. A `JWT auth bypass is enabled` warning is logged at startup.
 
 ### Testing
 
@@ -240,6 +243,32 @@ The health endpoint returns `200` with `{"message":"success"}`. The
 bank-details endpoint currently returns stub data, not data from an upstream system.
 
 The service does not currently use AWS resources. The `floci-init` container runs [floci/init.sh](floci/init.sh) once floci is ready; add the S3 buckets, SQS queues and SNS topics there when an integration needs them.
+
+#### Running with fcp-sfd-frontend
+
+[fcp-sfd-frontend](https://github.com/DEFRA/fcp-sfd-frontend) is the only service currently allowed to call this API. In a deployed environment it sends an AWS WebIdentity JWT that this service verifies. Locally neither side can do that, because floci can't issue WebIdentity tokens, so both services skip it:
+
+- The frontend sees `ENVIRONMENT=local` (its default), skips the AWS STS call and sends no `Authorization` header.
+- This service runs with `JWT_AUTH_BYPASS=true` and authenticates the request as the allowed caller (see [Development](#development)).
+
+Neither service calls AWS STS or the JWKS endpoint.
+
+To run them together:
+
+> We recommend running both services as Docker containers with `npm run docker:dev`. Compose sets the local environment variables for you (`ENVIRONMENT=local` and `JWT_AUTH_BYPASS=true` here) and puts both services on the shared `fcp-sfd` network, which is closer to how they run when deployed. Running on the host with `npm run start:watch` also works, but you then manage those settings yourself.
+
+1. Start this service with `npm run docker:dev`. It listens on `http://localhost:3010`.
+2. Start `fcp-sfd-frontend`, either from its repo with `npm run docker:dev` or through [fcp-sfd-dev-environment](https://github.com/DEFRA/fcp-sfd-dev-environment). Its `BANK_DETAILS_ENDPOINT` defaults to `http://host.docker.internal:3010`, which reaches this service through the host port.
+3. Check the connection through the frontend's diagnostic routes. Neither needs a sign-in:
+
+   ```bash
+   curl -i http://localhost:3000/bank-details-check
+   curl -i http://localhost:3000/bank-details-check/800000001
+   ```
+
+   The first returns `{"message":"success"}`. The second returns the stub bank details for the SBI. These are made-up bank details hard-coded in this service, not real data from an upstream system.
+
+If either check returns `{"message":"failure"}` (the SBI route also returns `502`), make sure this service is running on port `3010`. Then check that the frontend's `.env` doesn't override `BANK_DETAILS_ENDPOINT` with an old port. A `401` in this service's logs means the bypass is off: confirm `JWT_AUTH_BYPASS=true` and `ENVIRONMENT=local`.
 
 ### Dependabot
 

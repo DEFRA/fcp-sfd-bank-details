@@ -46,6 +46,21 @@ export const buildTokenRejectedLog = (request, err) => {
 }
 
 /**
+ * Builds the log context for the warning logged at startup when the local JWT auth bypass is
+ * enabled, so it is obvious from the logs that incoming requests are not being verified.
+ *
+ * @returns {object} ECS log context
+ */
+export const buildJwtBypassEnabledLog = () => {
+  return {
+    event: {
+      type: JWT_VERIFICATION_EVENT,
+      action: 'bypass_enabled'
+    }
+  }
+}
+
+/**
  * Builds the log context for a request that could not be verified because the JSON Web Key
  * Set could not be fetched or trusted.
  *

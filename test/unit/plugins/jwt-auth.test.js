@@ -37,7 +37,8 @@ const buildServer = () => {
       scheme: vi.fn(),
       strategy: vi.fn(),
       default: vi.fn()
-    }
+    },
+    logger: { warn: vi.fn() }
   }
 }
 
@@ -145,6 +146,12 @@ describe('jwtAuth', () => {
       const [, options] = mockCreateRemoteJWKSet.mock.calls[0]
 
       expect(options).toBeUndefined()
+    })
+
+    test('should not log the bypass warning', async () => {
+      const { server } = await registerWithEnvironment('test')
+
+      expect(server.logger.warn).not.toHaveBeenCalled()
     })
   })
 
@@ -531,15 +538,58 @@ describe('jwtAuth', () => {
       expect(server.app.JWKS).toBeUndefined()
     })
 
+    test('should log a warning that requests are not verified', async () => {
+      const { server } = await registerWithEnvironment('local')
+
+      expect(server.logger.warn).toHaveBeenCalledWith(
+        { event: { type: 'jwt_verification', action: 'bypass_enabled' } },
+        'JWT auth bypass is enabled, incoming requests are not verified'
+      )
+    })
+
     test('should authenticate requests without verifying a token', async () => {
       const { scheme } = await registerWithEnvironment('local')
       const h = { authenticated: vi.fn().mockReturnValue('authenticated') }
 
       const result = scheme.authenticate({ headers: {} }, h)
 
-      expect(h.authenticated).toHaveBeenCalledWith({ credentials: {} })
+      expect(h.authenticated).toHaveBeenCalledTimes(1)
       expect(result).toBe('authenticated')
       expect(mockJwtVerify).not.toHaveBeenCalled()
+    })
+
+    test('should authenticate as the allowed caller with credentials in the same shape as a verified token', async () => {
+      const { scheme } = await registerWithEnvironment('local')
+      const h = { authenticated: vi.fn() }
+
+      scheme.authenticate({ headers: {} }, h)
+
+      expect(h.authenticated).toHaveBeenCalledWith({
+        credentials: {
+          token: {
+            sub: 'arn:aws:iam::000000000000:role/mock-caller',
+            'https://sts.amazonaws.com/': {
+              principal_tags: { ServiceName: 'mock-caller' }
+            }
+          },
+          sub: 'arn:aws:iam::000000000000:role/mock-caller',
+          serviceName: 'mock-caller'
+        }
+      })
+    })
+
+    test('should give each request its own credentials object', async () => {
+      const { scheme } = await registerWithEnvironment('local')
+      const h = { authenticated: vi.fn() }
+
+      scheme.authenticate({ headers: {} }, h)
+      scheme.authenticate({ headers: {} }, h)
+
+      const [[first], [second]] = h.authenticated.mock.calls
+
+      expect(first.credentials).toEqual(second.credentials)
+      expect(first.credentials).not.toBe(second.credentials)
+      expect(first.credentials.token).not.toBe(second.credentials.token)
     })
   })
 })
