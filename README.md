@@ -298,6 +298,8 @@ Instructions for setting up SonarCloud can be found in [sonar-project.properties
 5. Runs a SonarCloud scan (skipped for Dependabot).
 6. Runs GitHub's dependency review, which fails on new dependencies with high or critical vulnerabilities.
 
+[detect-template-drift.yml](.github/workflows/detect-template-drift.yml) runs weekly and compares this service's `package.json` with the CDP Node.js backend template. It reports dependencies when the template version is ahead or the versions cannot be compared automatically. Service-ahead versions and template dependencies missing from this service appear in collapsible informational sections and do not need changing or adding just to match the template. The workflow closes the open drift issue when no actionable differences remain.
+
 [pr-approval-bot.yml](.github/workflows/pr-approval-bot.yml) comments on approved pull requests to remind you to add `#patch` or `#major` to the merge commit when needed. [publish.yml](.github/workflows/publish.yml) builds and publishes the service to CDP on merge to `main`; [publish-hotfix.yml](.github/workflows/publish-hotfix.yml) does the same for hot fixes.
 
 All actions are pinned to a full commit SHA, with the version in a trailing comment. When updating an action, update the SHA and the comment together.

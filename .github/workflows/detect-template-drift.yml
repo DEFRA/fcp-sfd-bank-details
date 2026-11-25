@@ -35,6 +35,10 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
 
       - name: Run drift detection
         id: drift
@@ -99,4 +103,36 @@ jobs:
                 labels: [label]
               })
               core.info(`Created new issue #${issue.number}`)
+            }
+
+      - name: Close resolved drift issue
+        if: steps.drift.outputs.detected == 'false'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const label = 'cdp-template-drift'
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: 'open'
+            })
+
+            if (issues.length > 0) {
+              const issue = issues[0]
+              const date = new Date().toISOString().slice(0, 10)
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `No actionable template drift remains as of ${date}. Closing this issue.`
+              })
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              })
+              core.info(`Closed resolved issue #${issue.number}`)
             }
