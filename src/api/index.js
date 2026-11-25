@@ -7,9 +7,10 @@ import { failAction } from './common/helpers/fail-action.js'
 import { pulse } from './common/helpers/pulse.js'
 import { requestTracing } from './common/helpers/request-tracing.js'
 import { jwtAuth } from '../plugins/jwt-auth.js'
+import { localAuth } from '../plugins/local-auth.js'
 import { metrics } from '@defra/cdp-metrics'
 
-const getAuthPlugin = async () => {
+const getAuthPlugin = () => {
   if (!config.get('auth.jwt.bypass')) {
     return jwtAuth
   }
@@ -20,7 +21,6 @@ const getAuthPlugin = async () => {
     )
   }
 
-  const { localAuth } = await import('../plugins/local-auth.js')
   return localAuth
 }
 
@@ -64,7 +64,7 @@ export const createServer = async () => {
     metrics,
     secureContext,
     pulse,
-    await getAuthPlugin(),
+    getAuthPlugin(),
     router
   ])
 
