@@ -9,6 +9,21 @@ import { requestTracing } from './common/helpers/request-tracing.js'
 import { jwtAuth } from '../plugins/jwt-auth.js'
 import { metrics } from '@defra/cdp-metrics'
 
+const getAuthPlugin = async () => {
+  if (!config.get('auth.jwt.bypass')) {
+    return jwtAuth
+  }
+
+  if (config.get('cdpEnvironment') !== 'local') {
+    throw new Error(
+      'JWT auth bypass is only permitted when ENVIRONMENT is local'
+    )
+  }
+
+  const { localAuth } = await import('../plugins/local-auth.js')
+  return localAuth
+}
+
 export const createServer = async () => {
   const server = Hapi.server({
     host: config.get('host'),
@@ -41,7 +56,7 @@ export const createServer = async () => {
   // requestTracing - trace header logging and propagation
   // secureContext  - loads CA certificates from environment config
   // pulse          - provides shutdown handlers
-  // jwtAuth        - verifies calling services via AWS WebIdentity JWTs (bypassed locally, see plugin)
+  // jwtAuth / localAuth - verifies JWTs or uses the local-only bypass
   // router         - routes used in the app
   await server.register([
     requestLogger,
@@ -49,7 +64,7 @@ export const createServer = async () => {
     metrics,
     secureContext,
     pulse,
-    jwtAuth,
+    await getAuthPlugin(),
     router
   ])
 

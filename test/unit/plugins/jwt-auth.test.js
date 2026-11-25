@@ -42,9 +42,8 @@ const buildServer = () => {
   }
 }
 
-const registerWithEnvironment = async (cdpEnvironment, overrides = {}) => {
+const registerJwtAuth = async (overrides = {}) => {
   const values = {
-    'auth.jwt.bypass': cdpEnvironment === 'local',
     'auth.jwt.jwksUri': jwksUri,
     'auth.jwt.issuer': 'mockIssuer',
     'auth.jwt.awsAccount': '123456789012',
@@ -53,10 +52,6 @@ const registerWithEnvironment = async (cdpEnvironment, overrides = {}) => {
 
   mockConfigGet.mockImplementation((key) => {
     switch (key) {
-      case 'cdpEnvironment':
-        return cdpEnvironment
-      case 'auth.jwt.bypass':
-        return values['auth.jwt.bypass']
       case 'auth.jwt.jwksUri':
         return values['auth.jwt.jwksUri']
       case 'auth.jwt.audience':
@@ -98,9 +93,9 @@ describe('jwtAuth', () => {
     expect(jwtAuth.plugin.register).toBeInstanceOf(Function)
   })
 
-  describe('when running in a non-local environment', () => {
+  describe('when registering the real JWT strategy', () => {
     test('should register the jwt-proxy scheme', async () => {
-      const { server } = await registerWithEnvironment('test')
+      const { server } = await registerJwtAuth()
 
       expect(server.auth.scheme).toHaveBeenCalledWith(
         'jwt-proxy',
@@ -109,19 +104,19 @@ describe('jwtAuth', () => {
     })
 
     test('should register the jwt strategy using the jwt-proxy scheme', async () => {
-      const { server } = await registerWithEnvironment('test')
+      const { server } = await registerJwtAuth()
 
       expect(server.auth.strategy).toHaveBeenCalledWith('jwt', 'jwt-proxy')
     })
 
     test('should set jwt as the default auth strategy', async () => {
-      const { server } = await registerWithEnvironment('test')
+      const { server } = await registerJwtAuth()
 
       expect(server.auth.default).toHaveBeenCalledWith('jwt')
     })
 
     test('should set the default strategy after registering it', async () => {
-      const { server } = await registerWithEnvironment('test')
+      const { server } = await registerJwtAuth()
 
       expect(server.auth.strategy.mock.invocationCallOrder[0]).toBeLessThan(
         server.auth.default.mock.invocationCallOrder[0]
@@ -129,68 +124,43 @@ describe('jwtAuth', () => {
     })
 
     test('should create the remote JWKS from the configured uri', async () => {
-      await registerWithEnvironment('test')
+      await registerJwtAuth()
 
       expect(mockCreateRemoteJWKSet).toHaveBeenCalledWith(new URL(jwksUri))
     })
 
     test('should store the JWKS on server.app', async () => {
-      const { server } = await registerWithEnvironment('test')
+      const { server } = await registerJwtAuth()
 
       expect(server.app.JWKS).toBe(mockJwks)
     })
 
     test('should leave jose to fetch the JWKS so the request uses the CDP proxy', async () => {
-      await registerWithEnvironment('test')
+      await registerJwtAuth()
 
       const [, options] = mockCreateRemoteJWKSet.mock.calls[0]
 
       expect(options).toBeUndefined()
-    })
-
-    test('should not log the bypass warning', async () => {
-      const { server } = await registerWithEnvironment('test')
-
-      expect(server.logger.warn).not.toHaveBeenCalled()
     })
   })
 
   describe('when required JWT config is missing', () => {
     test('should fail to register when the issuer is not set', async () => {
       await expect(
-        registerWithEnvironment('test', { 'auth.jwt.issuer': null })
+        registerJwtAuth({ 'auth.jwt.issuer': null })
       ).rejects.toThrow('JWT auth requires')
     })
 
     test('should fail to register when the JWKS uri is not set', async () => {
       await expect(
-        registerWithEnvironment('test', { 'auth.jwt.jwksUri': null })
+        registerJwtAuth({ 'auth.jwt.jwksUri': null })
       ).rejects.toThrow('JWT auth requires')
     })
 
     test('should fail to register when the AWS account is not set', async () => {
       await expect(
-        registerWithEnvironment('test', { 'auth.jwt.awsAccount': null })
+        registerJwtAuth({ 'auth.jwt.awsAccount': null })
       ).rejects.toThrow('JWT auth requires')
-    })
-  })
-
-  describe('when the bypass is enabled outside the local environment', () => {
-    test('should fail to register', async () => {
-      await expect(
-        registerWithEnvironment('prod', { 'auth.jwt.bypass': true })
-      ).rejects.toThrow('only permitted when ENVIRONMENT is local')
-    })
-  })
-
-  describe('when running locally without the bypass', () => {
-    test('should verify tokens', async () => {
-      const { server } = await registerWithEnvironment('local', {
-        'auth.jwt.bypass': false
-      })
-
-      expect(mockCreateRemoteJWKSet).toHaveBeenCalled()
-      expect(server.app.JWKS).toBe(mockJwks)
     })
   })
 
@@ -208,7 +178,7 @@ describe('jwtAuth', () => {
     }
 
     test('should reject a request with no authorization header', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest(undefined), h)
@@ -219,7 +189,7 @@ describe('jwtAuth', () => {
     })
 
     test('should reject a request without a Bearer prefix', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Basic abc'), h)
@@ -229,7 +199,7 @@ describe('jwtAuth', () => {
     })
 
     test('should not verify the token when the header is missing', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest(undefined), h)
@@ -239,7 +209,7 @@ describe('jwtAuth', () => {
     })
 
     test('should set the Bearer challenge when the header is missing', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest(undefined), h)
@@ -250,7 +220,7 @@ describe('jwtAuth', () => {
 
     test('should verify the token with the expected options', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await scheme.authenticate(buildRequest('Bearer mockToken'), h)
 
@@ -264,7 +234,7 @@ describe('jwtAuth', () => {
 
     test('should accept a lowercase scheme', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await scheme.authenticate(buildRequest('bearer mockToken'), h)
 
@@ -277,7 +247,7 @@ describe('jwtAuth', () => {
 
     test('should accept an uppercase scheme', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await scheme.authenticate(buildRequest('BEARER mockToken'), h)
 
@@ -290,7 +260,7 @@ describe('jwtAuth', () => {
 
     test('should accept multiple spaces after the scheme', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await scheme.authenticate(buildRequest('Bearer   mockToken'), h)
 
@@ -303,7 +273,7 @@ describe('jwtAuth', () => {
 
     test('should not change the case of the token', async () => {
       mockJwtVerify.mockResolvedValue({ payload: { sub: 'mockSub' } })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await scheme.authenticate(buildRequest('bearer MockToken'), h)
 
@@ -315,7 +285,7 @@ describe('jwtAuth', () => {
     })
 
     test('should reject a header with no token', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer '), h)
@@ -325,7 +295,7 @@ describe('jwtAuth', () => {
     })
 
     test('should reject a header with no space between scheme and token', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('BearermockToken'), h)
@@ -335,7 +305,7 @@ describe('jwtAuth', () => {
     })
 
     test('should reject a header with extra parts after the token', async () => {
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken extra'), h)
@@ -348,7 +318,7 @@ describe('jwtAuth', () => {
       const payload = { sub: 'mockSub', iss: 'mockIssuer' }
       const protectedHeader = { alg: 'RS256', kid: 'mockKid' }
       mockJwtVerify.mockResolvedValue({ payload, protectedHeader })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       const result = await scheme.authenticate(
         buildRequest('Bearer mockToken'),
@@ -376,7 +346,7 @@ describe('jwtAuth', () => {
         }
       }
       mockJwtVerify.mockResolvedValue({ payload, protectedHeader: {} })
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       const result = await scheme.authenticate(
         buildRequest('Bearer mockToken'),
@@ -390,7 +360,7 @@ describe('jwtAuth', () => {
       mockJwtVerify.mockRejectedValue(
         new JWSSignatureVerificationFailed('signature verification failed')
       )
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
       const request = buildRequest('Bearer mockToken')
 
       await expect(scheme.authenticate(request, h)).rejects.toMatchObject({
@@ -417,7 +387,7 @@ describe('jwtAuth', () => {
 
     test('should reject with a 401 when the token is signed with a key that is not in the jwks', async () => {
       mockJwtVerify.mockRejectedValue(new JWKSNoMatchingKey())
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken'), h)
@@ -426,7 +396,7 @@ describe('jwtAuth', () => {
 
     test('should reject with a 503 when the jwks request times out', async () => {
       mockJwtVerify.mockRejectedValue(new JWKSTimeout())
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken'), h)
@@ -438,7 +408,7 @@ describe('jwtAuth', () => {
 
     test('should reject with a 503 when the jwks is malformed', async () => {
       mockJwtVerify.mockRejectedValue(new JWKSInvalid('bad jwks'))
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken'), h)
@@ -450,7 +420,7 @@ describe('jwtAuth', () => {
 
     test('should reject with a 503 when the jwks cannot be read', async () => {
       mockJwtVerify.mockRejectedValue(new JOSEError('request failed'))
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken'), h)
@@ -462,7 +432,7 @@ describe('jwtAuth', () => {
 
     test('should reject with a 503 when the jwks host is unreachable', async () => {
       mockJwtVerify.mockRejectedValue(new TypeError('fetch failed'))
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
 
       await expect(
         scheme.authenticate(buildRequest('Bearer mockToken'), h)
@@ -474,7 +444,7 @@ describe('jwtAuth', () => {
 
     test('should log a jwks failure as an error with a stack trace', async () => {
       mockJwtVerify.mockRejectedValue(new JWKSTimeout())
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
       const request = buildRequest('Bearer mockToken')
 
       await expect(scheme.authenticate(request, h)).rejects.toThrow()
@@ -500,96 +470,12 @@ describe('jwtAuth', () => {
 
     test('should not log a jwks failure as a token rejection', async () => {
       mockJwtVerify.mockRejectedValue(new JWKSTimeout())
-      const { scheme } = await registerWithEnvironment('test')
+      const { scheme } = await registerJwtAuth()
       const request = buildRequest('Bearer mockToken')
 
       await expect(scheme.authenticate(request, h)).rejects.toThrow()
 
       expect(request.logger.warn).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('when running in the local environment', () => {
-    test('should register the jwt-proxy scheme', async () => {
-      const { server } = await registerWithEnvironment('local')
-
-      expect(server.auth.scheme).toHaveBeenCalledWith(
-        'jwt-proxy',
-        expect.any(Function)
-      )
-    })
-
-    test('should register the jwt strategy using the jwt-proxy scheme', async () => {
-      const { server } = await registerWithEnvironment('local')
-
-      expect(server.auth.strategy).toHaveBeenCalledWith('jwt', 'jwt-proxy')
-    })
-
-    test('should set jwt as the default auth strategy', async () => {
-      const { server } = await registerWithEnvironment('local')
-
-      expect(server.auth.default).toHaveBeenCalledWith('jwt')
-    })
-
-    test('should not create a remote JWKS', async () => {
-      const { server } = await registerWithEnvironment('local')
-
-      expect(mockCreateRemoteJWKSet).not.toHaveBeenCalled()
-      expect(server.app.JWKS).toBeUndefined()
-    })
-
-    test('should log a warning that requests are not verified', async () => {
-      const { server } = await registerWithEnvironment('local')
-
-      expect(server.logger.warn).toHaveBeenCalledWith(
-        { event: { type: 'jwt_verification', action: 'bypass_enabled' } },
-        'JWT auth bypass is enabled, incoming requests are not verified'
-      )
-    })
-
-    test('should authenticate requests without verifying a token', async () => {
-      const { scheme } = await registerWithEnvironment('local')
-      const h = { authenticated: vi.fn().mockReturnValue('authenticated') }
-
-      const result = scheme.authenticate({ headers: {} }, h)
-
-      expect(h.authenticated).toHaveBeenCalledTimes(1)
-      expect(result).toBe('authenticated')
-      expect(mockJwtVerify).not.toHaveBeenCalled()
-    })
-
-    test('should authenticate as the allowed caller with credentials in the same shape as a verified token', async () => {
-      const { scheme } = await registerWithEnvironment('local')
-      const h = { authenticated: vi.fn() }
-
-      scheme.authenticate({ headers: {} }, h)
-
-      expect(h.authenticated).toHaveBeenCalledWith({
-        credentials: {
-          token: {
-            sub: 'arn:aws:iam::000000000000:role/mock-caller',
-            'https://sts.amazonaws.com/': {
-              principal_tags: { ServiceName: 'mock-caller' }
-            }
-          },
-          sub: 'arn:aws:iam::000000000000:role/mock-caller',
-          serviceName: 'mock-caller'
-        }
-      })
-    })
-
-    test('should give each request its own credentials object', async () => {
-      const { scheme } = await registerWithEnvironment('local')
-      const h = { authenticated: vi.fn() }
-
-      scheme.authenticate({ headers: {} }, h)
-      scheme.authenticate({ headers: {} }, h)
-
-      const [[first], [second]] = h.authenticated.mock.calls
-
-      expect(first.credentials).toEqual(second.credentials)
-      expect(first.credentials).not.toBe(second.credentials)
-      expect(first.credentials.token).not.toBe(second.credentials.token)
     })
   })
 })

@@ -42,7 +42,7 @@ Keep dependencies flowing inward:
 
 - `src/index.js` starts the server. `src/api/index.js` builds the Hapi server and registers plugins; `src/api/router.js` registers the routes.
 - `src/api/<route>/` holds one folder per route with thin handlers: validate input, call a service, shape the response. Routes are unversioned for now; versioning under `src/api/v1/` is tracked in FLS2-496.
-- `src/api/common/helpers/` holds server helpers (start-server, fail-action, pulse, request logging and tracing). `src/plugins/` holds custom Hapi plugins such as `jwt-auth.js`.
+- `src/api/common/helpers/` holds server helpers (start-server, fail-action, pulse, request logging and tracing). `src/plugins/` holds custom Hapi plugins such as `jwt-auth.js` and `local-auth.js`.
 - `src/config/index.js` is the single source of config (convict, strict), built from per-area files (`server.js`, `auth.js`, `logging.js`, `proxy.js`, `tracing.js`). Never read `process.env` elsewhere.
 - Business logic belongs in `src/services/`; calls to D365, CRM or other upstreams belong in dedicated client modules with timeouts, retries and token handling. Never call upstreams from handlers.
 - Keep D365/CRM response shapes at the client boundary. Map them to domain objects before they reach routes, so upstream changes don't leak into the API contract.
@@ -54,9 +54,9 @@ Keep dependencies flowing inward:
 - No semicolons, 2-space indent, single quotes (enforced by neostandard). Run `npm run lint:fix` before committing.
 - Don't extend or modify the neostandard ruleset (FCP standard): no `rules` overrides, `noStyle`, `noJsx` or `eslint-disable` comments. Fix the code instead.
 - Validate all params, query and payload with Joi. Return errors with Boom, and never leak stack traces or upstream error bodies.
-- Authenticate callers on every non-health route. `src/plugins/jwt-auth.js` registers the `jwt` strategy as the server default, so routes are protected unless they opt out; `/health` is the only route that sets `auth: false`.
+- Authenticate callers on every non-health route. `createServer()` selects `src/plugins/jwt-auth.js` for JWT verification or `src/plugins/local-auth.js` for the local bypass. Both register the `jwt` strategy as the server default, so routes are protected unless they opt out; `/health` is the only route that sets `auth: false`.
 - Auth verifies AWS WebIdentity JWTs with `jose` against the remote JWKS, checking issuer, audience, RS256 and a subject role built from `AWS_ACCOUNT` and `BANK_DETAILS_ALLOWED_CALLER`, so only `fcp-sfd-frontend` can call protected routes. A rejected token is a 401; an unreachable JWKS is a 503, so an outage isn't reported as an auth failure.
-- `JWT_AUTH_BYPASS=true` skips verification and is for local development only: registration fails if it is set when `ENVIRONMENT` is not `local`. The `start:watch` and `start:debug` scripts, Docker Compose and `vitest.config.js` all enable it. With the bypass on, requests are authenticated as `BANK_DETAILS_ALLOWED_CALLER` with credentials in the same shape as the real path (`token`, `sub`, `serviceName`; `sub` uses the fake account `000000000000`), and a warning is logged at startup.
+- `JWT_AUTH_BYPASS=true` skips verification and is for local development only: `createServer()` rejects it when `ENVIRONMENT` is not `local`, and `local-auth.js` independently rejects registration outside `local`. The `start:watch` and `start:debug` scripts, Docker Compose and `vitest.config.js` all enable it. With the bypass on, requests are authenticated as `BANK_DETAILS_ALLOWED_CALLER` with credentials in the same shape as the real path (`token`, `sub`, `serviceName`; `sub` uses the fake account `000000000000`), and a warning is logged at startup.
 - Log with the shared logger, never `console`. **Never log bank details (account name, number, sort code) or other PII**, and don't log full upstream payloads. The `log.redact` paths in `src/config/logging.js` are a backstop, not a reason to log sensitive values.
 - No real data, secrets or credentials in code, tests or fixtures; use obviously fake values.
 - Use named constants rather than magic values; no commented-out code; JSDoc on exported functions.
@@ -70,7 +70,7 @@ Keep dependencies flowing inward:
 - Vitest globals are off: import `describe`, `test`, `expect` and `vi` from `vitest`.
 - Cover the happy path, validation failure, auth failure and upstream failure (timeouts, 4xx/5xx) for every route.
 - Mock outbound calls (`fetchMock` is set up in `test/setup.js`); never hit real D365 or CRM in tests.
-- `vitest.config.js` sets `JWT_AUTH_BYPASS=true`, so `createServer()` starts with the local auth scheme. Test rejected-caller behaviour against the real strategy rather than assuming the bypass.
+- `vitest.config.js` sets `JWT_AUTH_BYPASS=true`, so `createServer()` selects the local auth plugin. Test rejected-caller behaviour against the real strategy rather than assuming the bypass.
 - Coverage must stay **at or above 90%** (SonarCloud quality gate).
 
 ## Skills

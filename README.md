@@ -73,6 +73,8 @@ Use `npm run start:debug` to pause on startup until a debugger attaches (port 92
 
 The `start:watch` and `start:debug` scripts set `JWT_AUTH_BYPASS=true`, which skips JWT verification because the CDP identity provider is not available locally. The bypass is disabled by default and the service refuses to start with it enabled unless `ENVIRONMENT` is `local`.
 
+`createServer()` selects `src/plugins/local-auth.js` for the local bypass and `src/plugins/jwt-auth.js` otherwise. The local plugin also rejects registration outside the local environment.
+
 With the bypass on, every request is authenticated as `BANK_DETAILS_ALLOWED_CALLER` (default `fcp-sfd-frontend`). `request.auth.credentials` has the same shape as a verified token (`token`, `sub` and `serviceName`), with `sub` set to `arn:aws:iam::000000000000:role/<BANK_DETAILS_ALLOWED_CALLER>`. The fake account id means it can't be mistaken for a real identity. A `JWT auth bypass is enabled` warning is logged at startup.
 
 ### Testing
@@ -142,8 +144,10 @@ This service is called service to service, primarily by `fcp-sfd-frontend`. Ever
 except `/health` requires an AWS WebIdentity JWT in an `Authorization: Bearer <token>`
 header. `/health` is left open because the CDP platform health checks rely on it.
 
-`src/plugins/jwt-auth.js` registers the `jwt` strategy and sets it as the server default,
-so a new route is protected unless it explicitly opts out. For each request it:
+`createServer()` selects `src/plugins/jwt-auth.js` for real verification, or
+`src/plugins/local-auth.js` when the local bypass is enabled. Both register the `jwt`
+strategy as the server default, so a new route is protected unless it explicitly opts
+out. For each request, the JWT plugin:
 
 - verifies the token signature against the JSON Web Key Set published by the CDP identity
   provider
