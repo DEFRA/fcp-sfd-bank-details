@@ -40,6 +40,7 @@ export const localAuth = {
   plugin: {
     name: 'local-auth',
     register: async (server) => {
+      // Protect direct registrations that bypass createServer's selection guard.
       if (config.get('cdpEnvironment') !== 'local') {
         throw new Error(
           'JWT auth bypass is only permitted when ENVIRONMENT is local'
