@@ -133,10 +133,13 @@ git config --global core.autocrlf false
 
 ## API endpoints
 
-| Endpoint                   | Description                                                  |
-| :------------------------- | :----------------------------------------------------------- |
-| `GET: /health`             | Health (no authentication)                                   |
-| `GET: /bank-details/{sbi}` | Bank details for a business (stub data; JWT authentication) |
+| Endpoint       | Description                |
+| :------------- | :------------------------- |
+| `GET: /health` | Health (no authentication) |
+
+Versioned API routes belong under `src/api/v1/` and build their paths from
+`config.get('baseUrl.v1')`, which defaults to `/api/v1`. Keep `/health` at the
+root because the CDP platform health check calls that path.
 
 ## Service to service authentication
 
@@ -240,11 +243,11 @@ Check the endpoints:
 
 ```bash
 curl -i http://localhost:3010/health
-curl -i http://localhost:3010/bank-details/800000001
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3010/bank-details/800000001
 ```
 
-The health endpoint returns `200` with `{"message":"success"}`. The
-bank-details endpoint currently returns stub data, not data from an upstream system.
+The health endpoint returns `200` with `{"message":"success"}`. The removed
+stub bank-details endpoint returns `404`.
 
 The service does not currently use AWS resources. The `floci-init` container runs [floci/init.sh](floci/init.sh) once floci is ready; add the S3 buckets, SQS queues and SNS topics there when an integration needs them.
 
@@ -267,12 +270,16 @@ To run them together:
 
    ```bash
    curl -i http://localhost:3000/bank-details-check
-   curl -i http://localhost:3000/bank-details-check/800000001
    ```
 
-   The first returns `{"message":"success"}`. The second returns the stub bank details for the SBI. These are made-up bank details hard-coded in this service, not real data from an upstream system.
+   The route checks this service's `/health` endpoint and returns
+   `{"message":"success"}` when it is available. The SBI-specific diagnostic route
+   was removed with the stub read API.
 
-If either check returns `{"message":"failure"}` (the SBI route also returns `502`), make sure this service is running on port `3010`. Then check that the frontend's `.env` doesn't override `BANK_DETAILS_ENDPOINT` with an old port. A `401` in this service's logs means the bypass is off: confirm `JWT_AUTH_BYPASS=true` and `ENVIRONMENT=local`.
+If the check returns `{"message":"failure"}`, make sure this service is running on
+port `3010`. Then check that the frontend's `.env` doesn't override
+`BANK_DETAILS_ENDPOINT` with an old port. A `401` in this service's logs means the
+bypass is off: confirm `JWT_AUTH_BYPASS=true` and `ENVIRONMENT=local`.
 
 ### Dependabot
 
