@@ -13,8 +13,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 const issuer = 'https://issuer.example.com'
 const awsAccount = '123456789012'
 const callerSubject = `arn:aws:iam::${awsAccount}:role/fcp-sfd-frontend`
-// Synthetic SBI, in the 800000000 to 899999999 range reserved for test data.
-const protectedPath = '/bank-details/800000001'
+const protectedPath = '/test/protected'
 
 vi.stubEnv('ENVIRONMENT', 'test')
 vi.stubEnv('JWT_AUTH_BYPASS', 'false')
@@ -98,6 +97,11 @@ describe('jwt auth with real tokens', () => {
     resolveJwks = localJwks
 
     server = await createServer()
+    server.route({
+      method: 'GET',
+      path: protectedPath,
+      handler: (_request, h) => h.response({ message: 'success' })
+    })
     await server.initialize()
   })
 

@@ -41,7 +41,7 @@ Keep dependencies flowing inward:
 `routes → services → clients (D365, CRM, AWS, other upstreams)`
 
 - `src/index.js` starts the server. `src/api/index.js` builds the Hapi server and registers plugins; `src/api/router.js` registers the routes.
-- `src/api/<route>/` holds one folder per route with thin handlers: validate input, call a service, shape the response. Routes are unversioned for now; versioning under `src/api/v1/` is tracked in FLS2-496.
+- `src/api/v1/` holds versioned routes with thin handlers: validate input, call a service, shape the response. Build route paths from `config.get('baseUrl.v1')` (default `/api/v1`). Keep `/health` at the root for CDP platform health checks. Mirror versioned routes under `test/unit/api/v1/` and `test/integration/narrow/api/v1/`.
 - `src/api/common/helpers/` holds server helpers (start-server, fail-action, pulse, request logging and tracing). `src/plugins/` holds custom Hapi plugins such as `jwt-auth.js` and `local-auth.js`.
 - `src/config/index.js` is the single source of config (convict, strict), built from per-area files (`server.js`, `auth.js`, `logging.js`, `proxy.js`, `tracing.js`). Never read `process.env` elsewhere.
 - Business logic belongs in `src/services/`; calls to D365, CRM or other upstreams belong in dedicated client modules with timeouts, retries and token handling. Never call upstreams from handlers.

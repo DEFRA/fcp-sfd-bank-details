@@ -37,5 +37,12 @@ export const serverConfig = {
     ],
     default: 'local',
     env: 'ENVIRONMENT'
+  },
+  baseUrl: {
+    v1: {
+      doc: 'Base URL for version 1.x.x of the API',
+      format: String,
+      default: '/api/v1'
+    }
   }
 }
